@@ -316,6 +316,7 @@ export class World {
       if (sd > 0.5) boxes.boxW(cx + 3, cz + 2, 1.4, 1.4, h, 1.2, ang, WHITE, ST.plain);
     }
     // street lamps, light pools and palms along the real streets
+    const onRoad = (x, z, m = 1.0) => { const h = osm.nearestRoad(x, z, 4, (rr) => osm.cls(rr) !== RC.pedestrian && !(osm.flags(rr) & F.tunnel)); return h && h.dist < m; };
     const segs = this.segByChunk.get(key) || [];
     for (let k = 0; k < segs.length; k += 2) {
       const r = segs[k], i = segs[k + 1];
@@ -339,6 +340,7 @@ export class World {
         for (const sd of sides) {
           const off = hw + (major && oneway ? 1.6 : 1.1);
           const lx = px + nx * off * sd, lz = pz + nz * off * sd;
+          if (onRoad(lx, lz)) continue;   // never stand a pole on another carriageway
           const H = major ? 11 : 7.5;
           const yaw = Math.atan2(-uz, ux);
           boxes.boxW(lx, lz, 0.26, 0.26, y, H, yaw, POLE, ST.plain);
@@ -352,7 +354,7 @@ export class World {
         if (cls >= RC.trunk && cls <= RC.secondary && y < 0.5) {
           const tt = t + spacing / 2; if (tt < L) {
             const qx = x0 + ux * tt, qz = z0 + uz * tt;
-            for (const sd of oneway ? [-1] : [-1, 1]) palmAt(qx + nx * (hw + 2.4) * sd, qz + nz * (hw + 2.4) * sd, 8 + R() * 3);
+            for (const sd of oneway ? [-1] : [-1, 1]) { const mx = qx + nx * (hw + 2.4) * sd, mz = qz + nz * (hw + 2.4) * sd; if (!onRoad(mx, mz, 2.2)) palmAt(mx, mz, 8 + R() * 3); }
           }
         }
       }
