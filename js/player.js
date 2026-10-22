@@ -148,6 +148,13 @@ export class Player {
     if (this.gy > 2) return true;
     return !this.osm.insideBuilding(x, z, this.mode === 'car' ? 1.2 : 0.3);
   }
+  // top of whatever stands at a point (mapped buildings, generated houses, landmarks)
+  roofAt(x, z) {
+    let h = 0;
+    for (const c of LANDMARK_COLLIDERS) if ((x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) h = Math.max(h, c.h || 0);
+    if (this.osm) h = Math.max(h, this.osm.roofAt(x, z));
+    return h;
+  }
   // follow bridge decks when already near their height, otherwise stay on the ground
   groundAt(x, z) {
     if (!this.osm) return 0;
@@ -173,13 +180,13 @@ export class Player {
     const boost = input.boost;
     const p = this.pos;
     if (this.mode === 'person') {
-      const target = fwd * (boost ? 7.5 : 2.8);
+      const target = fwd * (boost ? 4.2 : 1.4);   // 15 km/h jog, 5 km/h walk
       this.speed += (target - this.speed) * Math.min(1, dt * 8);
       this.yaw += turn * dt * 2.6;
-      if (input.jump && this.alt <= 0.001) this.vy = 4.6;
+      if (input.jump && this.alt <= 0.001) this.vy = 2.97;   // about 0.45 m
       this.vy -= 9.8 * dt; this.alt = Math.max(0, this.alt + this.vy * dt);
       if (this.alt === 0) this.vy = Math.max(0, this.vy);
-      this.walkPhase += Math.abs(this.speed) * dt * 2.4;
+      this.walkPhase += Math.abs(this.speed) * dt * 4.2;
       this.move(dt);
       const m = this.models.person;
       const sw = Math.sin(this.walkPhase) * Math.min(1, Math.abs(this.speed) / 3);
@@ -189,39 +196,45 @@ export class Player {
       m.rotation.set(0, this.yaw, 0);
     } else if (this.mode === 'car') {
       // exploration driving: smooth throttle, speed-sensitive steering, gentle lane keeping, no crashes
-      const maxV = boost ? 42 : 25;   // 150 / 90 km/h
+      const maxV = boost ? 44.4 : 33.3;   // 160 / 120 km/h
+      const v0 = Math.abs(this.speed);
       let acc;
-      if (fwd > 0.05) acc = (this.speed < 0 ? 14 : 5.5 * (1 - Math.max(0, this.speed) / maxV) + 0.6) * fwd;
-      else if (fwd < -0.05) acc = this.speed > 0.5 ? 13 * fwd : 4 * fwd;
-      else acc = -Math.sign(this.speed) * Math.min(Math.abs(this.speed) / Math.max(dt, 1e-3), 1.6 + Math.abs(this.speed) * 0.04);
-      this.speed = THREE.MathUtils.clamp(this.speed + acc * dt, -7, maxV);
-      if (this.speed > maxV) this.speed += (maxV - this.speed) * Math.min(1, dt * 2);
+      // throttle: about 10 s from 0 to 100 km/h, tapering towards top speed
+      if (fwd > 0.05) acc = (this.speed < -0.3 ? 9 : 3.6 * (1 - Math.max(0, this.speed) / (maxV * 1.05)) + 0.4) * fwd;
+      // brakes: ~9 m/s2, so 100 km/h stops in about 40 m
+      else if (fwd < -0.05) acc = this.speed > 0.5 ? 9 * fwd : 2.5 * fwd;
+      // coasting: rolling resistance plus air drag (100 km/h rolls on for about half a minute)
+      else acc = -Math.sign(this.speed) * Math.min(v0 / Math.max(dt, 1e-3), 0.25 + 0.0007 * v0 * v0);
+      this.speed = THREE.MathUtils.clamp(this.speed + acc * dt, -6, Math.max(maxV, this.speed));
+      if (this.speed > maxV) this.speed += (maxV - this.speed) * Math.min(1, dt * 0.8);
+      this.lastAcc = acc;
       this.steer += (turn - this.steer) * Math.min(1, dt * (Math.abs(turn) > Math.abs(this.steer) ? 4 : 7));
       const v = Math.abs(this.speed);
-      const grip = Math.min(1, v / 4);
-      // the turning circle widens with speed, so the car never snaps at high speed
-      const rate = 1.9 * grip / (1 + v * 0.045);
-      this.yaw += this.steer * dt * rate * Math.sign(this.speed || 1);
+      // turning circle: 5.8 m at walking pace (a Land Cruiser), widened by tyre grip (7 m/s2 sideways) at speed
+      const radius = Math.max(5.8, (v * v) / 7);
+      this.yaw += this.steer * dt * (v / radius) * Math.sign(this.speed || 1);
       if (Math.abs(turn) < 0.05 && v > 6 && this.osm && this.gy < 2) this.laneKeep(dt);
       this.move(dt);
       const m = this.models.car;
       this.gy += (this.groundAt(p.x, p.z) - this.gy) * Math.min(1, dt * 10);
       // body roll and pitch for weight
-      this.pitch = (this.pitch || 0) + ((acc * 0.004) - (this.pitch || 0)) * Math.min(1, dt * 4);
+      this.pitch = (this.pitch || 0) + ((acc * 0.003) - (this.pitch || 0)) * Math.min(1, dt * 4);
       m.position.set(p.x, this.gy, p.z);
       m.rotation.set(0, this.yaw, 0);
       m.rotateZ(THREE.MathUtils.clamp(this.pitch, -0.03, 0.03));
       m.rotateX(-this.steer * Math.min(1, v / 25) * 0.035);
     } else {
-      const maxV = boost ? 95 : 48;
+      const maxV = boost ? 70 : 50;   // 250 / 180 km/h
       const target = fwd * maxV;
-      this.speed += (target - this.speed) * Math.min(1, dt * 1.4);
-      this.yaw += turn * dt * 1.3;
+      this.speed += (target - this.speed) * Math.min(1, dt * 0.9);
+      this.yaw += turn * dt * 1.1;
       const climb = (input.jump ? 1 : 0) - (input.descend ? 1 : 0) + (input.az || 0);
-      this.vy += (climb * 22 - this.vy) * Math.min(1, dt * 4);
-      this.alt = THREE.MathUtils.clamp(this.alt + this.vy * dt, 2, 1400);
-      p.x += Math.cos(this.yaw) * this.speed * dt;
-      p.z -= Math.sin(this.yaw) * this.speed * dt;
+      this.vy += (climb * (boost ? 12 : 8) - this.vy) * Math.min(1, dt * 2.5);
+      const nx = p.x + Math.cos(this.yaw) * this.speed * dt, nz = p.z - Math.sin(this.yaw) * this.speed * dt;
+      const floorHere = this.roofAt(p.x, p.z) + 3, floorNext = this.roofAt(nx, nz) + 3;
+      if (this.alt < floorNext - 1.5) { this.speed *= 0.2; }   // a wall ahead: stop instead of flying through it
+      else { p.x = nx; p.z = nz; }
+      this.alt = THREE.MathUtils.clamp(this.alt + this.vy * dt, Math.max(2, Math.min(floorHere, floorNext)), 1400);
       const m = this.models.heli;
       m.position.set(p.x, this.alt, p.z);
       m.rotation.set(-turn * 0.18 * Math.min(1, this.speed / 30), this.yaw, -this.speed / maxV * 0.16 * (fwd ? 1 : 0.3), 'YXZ');

@@ -62,17 +62,16 @@ function kingdomCentre() {
   for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); pa.setZ(i, pa.getZ(i) * (1 - 0.62 * (y / H) ** 1.3)); }
   geo.computeVertexNormals();
   const tower = mesh(geo, ST.glass, '#a9b6c0', 0.31);
-  tower.position.y = 26;
   g.add(tower);
   // Sky Bridge
-  const yb = 26 + 292;
+  const yb = 292;
   const bw = 2 * xi(292) + 4;
   const bridge = mesh(new THREE.BoxGeometry(bw, 5, 8), ST.glass, '#c9d2d8', 0.9);
   bridge.position.y = yb;
   g.add(bridge);
   // LED outline of the arch (lit at night, colour-cycling)
   const pts = [];
-  for (let i = 0; i <= 60; i++) { const t = i / 60; const y = holeBase + (H - holeBase) * (1 - Math.abs(1 - 2 * t)) ** 1; const x = (t < 0.5 ? -1 : 1) * xi(y); pts.push(new THREE.Vector3(x, y + 26, 0)); }
+  for (let i = 0; i <= 60; i++) { const t = i / 60; const y = holeBase + (H - holeBase) * (1 - Math.abs(1 - 2 * t)) ** 1; const x = (t < 0.5 ? -1 : 1) * xi(y); pts.push(new THREE.Vector3(x, y, 0)); }
   const arch = new THREE.Mesh(styled(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.9, 6), ST.led, 0.1), bmat('#ffffff'));
   for (const z of [-6.4, 6.4]) { const a = arch.clone(); a.position.z = z; g.add(a); }
   const bridgeLed = new THREE.Mesh(styled(new THREE.BoxGeometry(bw + 1, 0.8, 8.6), ST.led, 0.6), bmat('#ffffff'));
@@ -220,6 +219,7 @@ function waterTower() {
   g.add(ring);
   g.add(mesh(new THREE.CylinderGeometry(17, 17, 4, 24).translate(0, 67.5, 0), ST.plain, '#e9e9e6'));
   g.add(mesh(new THREE.CylinderGeometry(1.2, 2, 14, 8).translate(0, 76, 0), ST.plain, '#d0d0d0'));
+  g.scale.set(0.85, 61 / 83, 0.85);   // 61 m to the top of the mast
   return g;
 }
 function tvTower() {
@@ -227,9 +227,9 @@ function tvTower() {
   g.add(mesh(new THREE.CylinderGeometry(4.2, 8, 150, 16).translate(0, 75, 0), ST.plain, '#cfc8bb'));
   g.add(mesh(new THREE.CylinderGeometry(14, 10, 12, 20).translate(0, 128, 0), ST.glass, '#7c8f99', 0.9));
   g.add(mesh(new THREE.CylinderGeometry(15, 15, 2, 20).translate(0, 135, 0), ST.plain, '#d9d4c9'));
-  g.add(mesh(new THREE.CylinderGeometry(0.6, 1.6, 30, 8).translate(0, 165, 0), ST.plain, '#c8c8c8'));
+  g.add(mesh(new THREE.CylinderGeometry(0.6, 1.6, 34, 8).translate(0, 153, 0), ST.plain, '#c8c8c8'));   // antenna tip at 170 m
   const b = new THREE.Mesh(styled(new THREE.SphereGeometry(1, 8, 6), ST.lamp), bmat('#ff3030'));
-  b.position.y = 180;
+  b.position.y = 170;
   g.add(b);
   return g;
 }
@@ -370,5 +370,5 @@ export function buildLandmarks(scene) {
 }
 // Colliders for walking/driving (world circles)
 export const LANDMARK_COLLIDERS = [
-  ['kingdom', 62], ['faisaliah', 34], ['rafal', 30], ['masmak', 36], ['water', 6], ['tv', 9], ['moi', 30], ['kafd', 30]
-].map(([k, r]) => ({ x: PLACES[k].x, z: PLACES[k].z, r }));
+  ['kingdom', 62, 302], ['faisaliah', 34, 267], ['rafal', 30, 308], ['masmak', 36, 18], ['water', 8, 61], ['tv', 9, 170], ['moi', 30, 64], ['kafd', 30, 385]
+].map(([k, r, h]) => ({ x: PLACES[k].x, z: PLACES[k].z, r, h }));

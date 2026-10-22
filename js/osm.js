@@ -4,6 +4,8 @@
 export const RC = { motorway: 0, trunk: 1, primary: 2, secondary: 3, tertiary: 4, unclassified: 5, residential: 6, living: 7, service: 8, mlink: 9, link: 10, pedestrian: 11 };
 export const F = { oneway: 1, bridge: 2, tunnel: 4, lit: 8 };
 const CELL = 200;
+// road id and segment index share one Uint32 in the spatial grid: 10 bits for the segment (ways have <= 182 points)
+export const SEG = 1024;
 function b64(text) {
   const bin = atob(text.trim()), out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
@@ -68,7 +70,7 @@ export class OSM {
           let last = -1;
           for (let k = 0; k <= steps; k++) {
             const t = k / steps, c = this.cell(P[a] + (P[a + 2] - P[a]) * t, P[a + 1] + (P[a + 3] - P[a + 1]) * t);
-            if (c !== last) { push(c, r * 65536 + i); last = c; }
+            if (c !== last) { push(c, r * SEG + i); last = c; }
           }
           void mx; void mz;
         }
@@ -126,7 +128,9 @@ export class OSM {
   cls(r) { return this.s.roads[r * 4] & 255; }
   flags(r) { return (this.s.roads[r * 4] >> 8) & 255; }
   width(r) { return ((this.s.roads[r * 4] >>> 24) * 2) / 10; }
-  nameOf(r) { const i = this.s.roads[r * 4 + 1]; return i === 0xFFFFFFFF ? null : this.names[i]; }
+  nameOf(r) { const i = this.s.roads[r * 4 + 1] & 0xFFFF; return i === 0xFFFF ? null : this.names[i]; }
+  // posted speed limit in km/h from OSM maxspeed, 0 when unknown
+  maxspeed(r) { return this.s.roads[r * 4 + 1] >>> 16; }
   // height of a road at distance s along it: bridges rise from both ends to a 7 m deck
   roadY(r, sAlong) {
     const f = this.flags(r);
@@ -141,7 +145,7 @@ export class OSM {
     let best = null, bd = maxD;
     const P = this.s.roadPts;
     this.forItems(this.segGrid, x - maxD, z - maxD, x + maxD, z + maxD, (v) => {
-      const r = Math.floor(v / 65536), i = v % 65536;
+      const r = Math.floor(v / SEG), i = v % SEG;
       if (filter && !filter(r)) return;
       const st = this.s.roads[r * 4 + 2];
       const a = (st + i) * 2;
@@ -188,6 +192,26 @@ export class OSM {
       if (Math.abs(lx) < w / 2 + pad && Math.abs(lz) < d / 2 + pad) hit = true;
     });
     return hit;
+  }
+  // height of the tallest mapped building or generated house covering a point
+  roofAt(x, z) {
+    let h = 0;
+    const B = this.s.bldPts;
+    this.forItems(this.bldGrid, x, z, x, z, (b) => {
+      const st = this.s.buildings[b * 4 + 2], n = this.s.buildings[b * 4 + 3];
+      let inside = false;
+      for (let i = 0, j = n - 1; i < n; j = i++) {
+        const xi = B[(st + i) * 2], zi = B[(st + i) * 2 + 1], xj = B[(st + j) * 2], zj = B[(st + j) * 2 + 1];
+        if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+      }
+      if (inside) h = Math.max(h, (this.s.buildings[b * 4] >>> 8) / 10);
+    });
+    const FX = this.s.fillXZ, FD = this.s.fillDims;
+    this.forItems(this.fillGrid, x - 30, z - 30, x + 30, z + 30, (f) => {
+      const dx = x - FX[f * 2], dz = z - FX[f * 2 + 1], yaw = (FD[f * 4] / 256) * Math.PI * 2, c = Math.cos(yaw), sn = Math.sin(yaw);
+      if (Math.abs(dx * c - dz * sn) < FD[f * 4 + 1] / 8 && Math.abs(dx * sn + dz * c) < FD[f * 4 + 2] / 8) h = Math.max(h, FD[f * 4 + 3] / 4 + 2 + 3);
+    });
+    return h;
   }
   fill(f) {
     const FX = this.s.fillXZ, FD = this.s.fillDims, FS = this.s.fillStyle[f];

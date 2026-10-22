@@ -3,7 +3,7 @@
 #
 # Frame: metres, origin at Kingdom Centre, x east, z south (same as js/geo.js).
 # Sections (little endian, 4-byte aligned), described in riyadh.json:
-#   roads      u32 x4 per road  [cls | flags<<8 | lanes<<16 | width_dm<<24, name_idx, pt_start, pt_count]
+#   roads      u32 x4 per road  [cls | flags<<8 | lanes<<16 | width_dm<<24, name_idx | maxspeed_kmh<<16, pt_start, pt_count]
 #   buildings  u32 x4 per bldg  [style | height_dm<<8, seed, pt_start, pt_count]   (outer ring, CCW)
 #   land       u32 x3 per area  [kind, pt_start, pt_count]
 #   rail       u32 x3 per line  [flags, pt_start, pt_count]
@@ -151,6 +151,10 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
         lanes = max(1, lanes // 2)
     flags = (1 if ow else 0) | (2 if bridge else 0) | (4 if tunnel else 0) | (8 if t.get('lit') in ('yes', '24/7') else 0)
     nid = name_id(name or t.get('name:ar'), t.get('name:en'))
+    try:
+        maxspeed = max(0, min(200, int(float(t.get('maxspeed', '0').split()[0]))))
+    except ValueError:
+        maxspeed = 0
     if tunnel:
         n_tunnel += 1
     for ln in lines:
@@ -161,7 +165,7 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
         if len(p) < 2:
             continue
         s, n = add_pts(p, 'road')
-        roads.append((cls | flags << 8 | min(lanes, 15) << 16 | int(width * 10 / 2) << 24, nid, s, n))
+        roads.append((cls | flags << 8 | min(lanes, 15) << 16 | int(width * 10 / 2) << 24, (0xFFFF if nid == 0xFFFFFFFF else nid) | maxspeed << 16, s, n))
         if not tunnel:
             road_lines.append((p, width, cls))
 road_pt_end = len(PTS['road']) // 2

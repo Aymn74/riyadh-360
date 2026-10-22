@@ -10,7 +10,7 @@ import * as G from './geo.js';
 import { U, makeGroundMaterial, makeSky, poolMat } from './materials.js';
 import { buildLandmarks } from './landmarks.js';
 import { Player } from './player.js';
-import { OSM, RC, F } from './osm.js';
+import { OSM, RC, F, SEG } from './osm.js';
 import { World } from './world.js';
 import { Cars } from './cars.js';
 
@@ -439,7 +439,8 @@ function teleport(t) {
   const w = G.geo(t.at[0], t.at[1]);
   let x = w.x, z = w.z, yaw;
   const want = (r) => !(osm.flags(r) & (F.tunnel | F.bridge)) && (t.small ? osm.cls(r) <= RC.living : osm.cls(r) <= RC.tertiary);
-  const hit = osm && osm.nearestRoad(x, z, 400, want);
+  // prefer the main carriageway when one runs close by, otherwise any suitable street
+  const hit = osm && (!t.small && osm.nearestRoad(x, z, 150, (r) => want(r) && osm.cls(r) <= RC.primary) || osm.nearestRoad(x, z, 400, want));
   if (hit) {
     const ow = osm.flags(hit.road) & F.oneway, hw = osm.width(hit.road) / 2;
     // keep right: inside lane of a one-way carriageway, right half of a two-way street
@@ -499,7 +500,7 @@ function drawRoadsOn(ctx, toScreen, scale, x0, z0, x1, z1) {
   const maxCls = scale < 0.03 ? RC.secondary : scale < 0.08 ? RC.tertiary : 11;
   const seen = new Set(), P = osm.s.roadPts;
   const order = [];
-  osm.forItems(osm.segGrid, x0, z0, x1, z1, (v) => { const r = Math.floor(v / 65536); if (seen.has(r)) return; seen.add(r); const c = osm.cls(r); if (c <= maxCls && !(osm.flags(r) & F.tunnel)) order.push(r); });
+  osm.forItems(osm.segGrid, x0, z0, x1, z1, (v) => { const r = Math.floor(v / SEG); if (seen.has(r)) return; seen.add(r); const c = osm.cls(r); if (c <= maxCls && !(osm.flags(r) & F.tunnel)) order.push(r); });
   order.sort((a, b) => osm.cls(b) - osm.cls(a));
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const r of order) {
@@ -634,7 +635,7 @@ function drawAtlas() {
     ctx.font = '600 11px "IBM Plex Sans Arabic", sans-serif'; ctx.fillStyle = '#20180e';
     const done = new Set(), P = osm.s.roadPts;
     osm.forItems(osm.segGrid, vx0, vz0, vx1, vz1, (v) => {
-      const r = Math.floor(v / 65536), i = v % 65536, nm = osm.nameOf(r);
+      const r = Math.floor(v / SEG), i = v % SEG, nm = osm.nameOf(r);
       if (!nm || osm.cls(r) > (view.s > 0.4 ? 7 : RC.tertiary)) return;
       const key = nm[0] || nm[1]; if (done.has(key)) return;
       const st = osm.s.roads[r * 4 + 2], k = (st + i) * 2;
@@ -732,8 +733,13 @@ function updateHud(dt, fps) {
   const kmh = Math.round(Math.abs(player.speed) * 3.6);
   $('hud-speed').textContent = toArabicDigits(kmh);
   $('hud-speed-meter').style.width = Math.min(100, kmh / (player.mode === 'heli' ? 340 : player.mode === 'car' ? 190 : 30) * 100) + '%';
-  $('hud-altitude').textContent = toArabicDigits(Math.round(player.mode === 'heli' ? player.alt : 612));
-  $('hud-alt-label').textContent = player.mode === 'heli' ? 'الارتفاع' : 'فوق سطح البحر';
+  // altitude when flying, the posted speed limit of the road when driving
+  let limit = 0;
+  if (player.mode === 'car') { const h = osm.nearestRoad(player.pos.x, player.pos.z, 8, (r) => !(osm.flags(r) & F.tunnel)); if (h && h.dist < 1) limit = Math.round(traffic.limit(h.road) * 3.6 / 10) * 10; }
+  $('hud-altitude').textContent = toArabicDigits(Math.round(player.mode === 'heli' ? player.alt : limit || 612));
+  $('hud-alt-label').textContent = player.mode === 'heli' ? 'الارتفاع' : limit ? 'حد السرعة' : 'فوق سطح البحر';
+  $('hud-alt-unit').textContent = player.mode !== 'heli' && limit ? 'كم/س' : 'م';
+  $('hud-speed').classList.toggle('over', limit > 0 && kmh > limit + 5);
   const d = G.districtAt(player.pos.x, player.pos.z);
   const r = roadName(player.pos.x, player.pos.z);
   const key = (r ? r.ar : '') + d.en;
@@ -753,18 +759,21 @@ function updateHud(dt, fps) {
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
 function frame() {
-  const dt = Math.min(0.05, clock.getDelta());
-  fpsAvg += (1 / Math.max(dt, 1e-3) - fpsAvg) * 0.05;
-  U.uTime.value += dt;
+  // simulate in steps of at most 1/30 s, so distance always matches real time even at low frame rates
+  const frameDt = Math.min(0.25, clock.getDelta());
+  const subN = Math.max(1, Math.ceil(frameDt / (1 / 30)));
+  const dt = frameDt / subN;
+  fpsAvg += (1 / Math.max(frameDt, 1e-3) - fpsAvg) * 0.05;
+  U.uTime.value += frameDt;
   readKeys();
-  player.update(dt, input, traffic);
-  updateCamera(dt);
+  for (let k = 0; k < subN; k++) player.update(dt, input, traffic);
+  updateCamera(frameDt);
   const scenic = !!SCENIC.find((s) => s.id === camId || (camId === 'drone' && SCENIC[directorIdx].id === s.id));
   const focus = scenic ? camera.position : player.pos;
   const nearR = scenic ? detailR * 0.8 : player.mode === 'heli' ? Math.min(2600, detailR + player.alt * 0.5) : detailR;
   world.update({ x: focus.x, z: focus.z }, nearR, farR, 6);
-  traffic.update(dt, focus, player.mode !== 'heli' && !scenic ? player.pos : null);
-  peds.update(dt, focus.x, focus.z, !scenic || camPos.y < 60);
+  for (let k = 0; k < subN; k++) traffic.update(dt, focus, player.mode !== 'heli' && !scenic ? player.pos : null);
+  peds.update(frameDt, focus.x, focus.z, !scenic || camPos.y < 60);
   // shadow camera follows what we are looking at
   const sc = new THREE.Vector3(camLook.x, 0, camLook.z);
   sun.target.position.copy(sc);
@@ -774,17 +783,17 @@ function frame() {
   sky.position.copy(camera.position);
   if (dust.visible) {
     dust.position.set(camera.position.x, Math.max(0, camera.position.y - 40), camera.position.z);
-    dust.rotation.y += dt * 0.15;
+    dust.rotation.y += frameDt * 0.15;
   }
   // headlights in the dark
   player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, U.uNight.value - 0.4) * 420 : 0;
   if (composer) composer.render(); else renderer.render(scene, camera);
-  mmTimer -= dt;
+  mmTimer -= frameDt;
   if (mmTimer <= 0 && !document.body.classList.contains('hud-hidden')) { mmTimer = 0.1; drawMinimap(); }
   if (!$('fullmap-modal').hidden) drawAtlas();
-  updateHud(dt, fpsAvg);
+  updateHud(frameDt, fpsAvg);
   // adaptive detail
-  if (fpsAvg < 26) { slowT += dt; if (slowT > 4 && detailR > 800) { detailR -= 200; farR = Math.max(4000, farR - 1000); slowT = 0; } } else slowT = 0;
+  if (fpsAvg < 26) { slowT += frameDt; if (slowT > 4 && detailR > 800) { detailR -= 200; farR = Math.max(4000, farR - 1000); slowT = 0; } } else slowT = 0;
   requestAnimationFrame(frame);
 }
 

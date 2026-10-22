@@ -58,12 +58,19 @@ export class Cars {
       const lanes = Math.max(1, (osm.s.roads[r * 4] >> 16) & 255);
       Object.assign(c, { r, i: hit.seg, t: hit.t, dir: ow ? 1 : Math.random() < 0.5 ? 1 : -1, lane: Math.floor(Math.random() * lanes), v: 8, ok: true });
       const cls = osm.cls(r);
-      c.v0 = (cls <= RC.trunk ? 24 : cls <= RC.secondary ? 17 : 13) * (0.8 + Math.random() * 0.35);
+      c.v0 = this.limit(r) * (0.85 + Math.random() * 0.2);
       const [x0, z0, x1, z1] = this.segOf(c); c.t *= Math.hypot(x1 - x0, z1 - z0);
       c.wx = hit.x; c.wz = hit.z; c.ux = hit.dirx * c.dir; c.uz = hit.dirz * c.dir;
       return;
     }
     c.ok = false;
+  }
+  // the posted limit (OSM maxspeed) or a typical Riyadh value for the road class, in m/s
+  limit(r) {
+    const ms = this.osm.maxspeed(r);
+    if (ms >= 20) return ms / 3.6;
+    const c = this.osm.cls(r);
+    return (c === RC.motorway ? 110 : c === RC.trunk ? 90 : c === RC.primary ? 70 : c === RC.secondary ? 60 : c <= RC.tertiary ? 50 : c === RC.mlink ? 60 : c === RC.link ? 45 : 40) / 3.6;
   }
   // choose a way leaving the junction at the end of the current one
   next(c) {
@@ -92,6 +99,7 @@ export class Cars {
     const on = s.roads[o.r * 4 + 3];
     const lanes = Math.max(1, (s.roads[o.r * 4] >> 16) & 255);
     c.r = o.r; c.dir = o.end === 0 ? 1 : -1; c.i = o.end === 0 ? 0 : on - 2; c.t = 0; c.lane = Math.min(c.lane, lanes - 1);
+    c.v0 = this.limit(o.r) * (0.85 + Math.random() * 0.2);
     return true;
   }
   progress(c) {
