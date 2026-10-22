@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head><body>
+<title>Slop Riyadh</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="محاكاة ثلاثية الأبعاد لمدينة الرياض مبنية بـ three.js من بيانات OpenStreetMap: شوارع ومبانٍ حقيقية، برج المملكة، الفيصلية، كافد، المصمك والدرعية.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Reem+Kufi:wght@600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: full-bleed 3D canvas; HUD is a three-row grid (top bar / free / bottom dock) inside the safe gutter. */
+:root {
+  --ink: #fbf6ec;          /* HUD text */
+  --muted: #c7b9a3;        /* secondary text */
+  --panel: rgba(28, 22, 17, 0.74);
+  --line: rgba(255, 236, 205, 0.14);
+  --sand: #e9c46a;         /* accent: desert gold */
+  --green: #1f9d63;        /* Saudi green, used for "you are here" and active state */
+  --sign: #0d5ea8;         /* Saudi road-sign blue */
+  --ground: #16120e;
+  --f-display: "Reem Kufi", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-ui: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --f-data: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--ground); color: var(--ink); font-family: var(--f-ui); overflow: hidden; -webkit-user-select: none; user-select: none; }
+#canvas-container { position: fixed; inset: 0; touch-action: none; }
+#canvas-container canvas { display: block; width: 100%; height: 100%; }
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--sand); outline-offset: 2px; }
+kbd { font-family: var(--f-data); font-size: 10px; line-height: 1; padding: 3px 5px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); background: rgba(255,255,255,0.04); }
+.icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.icon-sprite { position: absolute; width: 0; height: 0; }
+
+/* loading */
+#loading-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: radial-gradient(120% 90% at 50% 100%, #6e4b2a 0%, #2a1d13 55%, #120d09 100%); transition: opacity .6s ease; }
+#loading-overlay.done { opacity: 0; pointer-events: none; }
+.loader { display: grid; justify-items: center; gap: 14px; padding-inline: max(16px, env(safe-area-inset-left, 0px)); text-align: center; }
+.loader-mark { font-family: var(--f-display); font-size: clamp(44px, 9vw, 76px); line-height: 1; color: var(--sand); letter-spacing: 0; }
+.loader-sub { font-size: 13px; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; font-family: var(--f-data); direction: ltr; }
+.loader-track { width: min(320px, 70vw); height: 3px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+#loading-progress { display: block; height: 100%; width: 0; background: var(--sand); transition: width .3s ease; }
+#loading-status { font-size: 14px; color: var(--ink); min-height: 1.5em; max-width: 34ch; }
+#loading-overlay.error #loading-status { color: #ffb4a8; }
+
+/* HUD frame */
+#hud { position: fixed; inset: 0; z-index: 10; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)); }
+body.hud-hidden .brand, body.hud-hidden .hud-bottom { opacity: 0; visibility: hidden; }
+.panel { pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); box-shadow: 0 8px 28px rgba(0,0,0,0.28); }
+.hud-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; min-width: 0; }
+.hud-bottom { align-items: flex-end; }
+
+.brand { display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 16px; }
+.brand-mark { width: 38px; height: 38px; border-radius: 9px; display: grid; place-items: center; background: var(--green); color: #fff; font-family: var(--f-display); font-size: 21px; line-height: 1; }
+.brand h1 { margin: 0; font-family: var(--f-display); font-size: 22px; font-weight: 700; line-height: 1.1; }
+.brand h1 span { color: var(--sand); }
+.brand-subtitle { font-family: var(--f-data); font-size: 11px; color: var(--muted); direction: ltr; text-align: right; margin-top: 3px; }
+.osm-credit { display: block; font-family: var(--f-data); font-size: 10.5px; color: var(--muted); direction: ltr; text-align: right; margin-top: 2px; text-decoration: none; }
+.osm-credit:hover { color: var(--ink); text-decoration: underline; }
+.fps-ok { color: #8fe0b0; } .fps-mid { color: var(--sand); } .fps-low { color: #ff9c8a; }
+
+.toolbar { display: flex; align-items: center; gap: 4px; padding: 5px; flex-wrap: wrap; justify-content: flex-end; }
+.tool-btn, .time-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+.tool-btn:hover, .time-btn:hover { background: rgba(255,255,255,0.07); }
+.time-btn.active { background: var(--sand); color: #2a1d10; }
+.time-btn.active kbd { color: #2a1d10; }
+.toolbar-divider { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.icon-only { padding: 0 9px; }
+.icon-show { display: none; }
+body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { display: block; }
+
+/* bottom dock */
+.dock-start { display: flex; align-items: flex-end; gap: 12px; }
+.sign { pointer-events: auto; background: var(--sign); color: #fff; border: 2px solid #fff; border-radius: 8px; padding: 8px 14px 9px; min-width: 190px; max-width: 300px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
+.sign-ar { font-weight: 700; font-size: 19px; line-height: 1.25; text-wrap: balance; }
+.sign-en { font-family: "IBM Plex Sans", Arial, sans-serif; font-size: 13px; font-weight: 600; direction: ltr; text-align: right; opacity: .95; }
+.sign-meta { display: flex; justify-content: space-between; gap: 10px; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.35); font-size: 11.5px; }
+.sign-meta span:last-child { font-family: var(--f-data); direction: ltr; font-size: 10.5px; opacity: .85; }
+.radar { position: relative; width: 168px; height: 168px; border-radius: 50%; overflow: hidden; cursor: pointer; padding: 0; flex: none; }
+#minimap-canvas { width: 100%; height: 100%; display: block; }
+.radar-north { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; display: grid; place-items: center; font: 700 10px var(--f-data); color: #2a1d10; background: var(--sand); border-radius: 50%; }
+.radar-key { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
+
+.dock-center { display: grid; justify-items: center; gap: 8px; min-width: 0; }
+.controls-hint { font-size: 12.5px; color: var(--ink); text-shadow: 0 1px 3px rgba(0,0,0,0.8); text-align: center; max-width: 52ch; }
+.mode-switch { display: flex; gap: 4px; padding: 5px; }
+.mode-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; font-size: 14px; font-weight: 600; }
+.mode-btn:hover { background: rgba(255,255,255,0.07); }
+.mode-btn.active { background: var(--green); color: #fff; }
+.mode-btn.active kbd { color: #eafff2; border-color: rgba(255,255,255,0.4); }
+
+.cluster { padding: 12px 14px; display: grid; gap: 10px; min-width: 230px; }
+.gauge-top { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); }
+.gauge-speed { display: flex; align-items: baseline; gap: 8px; }
+#hud-speed { font-family: var(--f-display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; min-width: 2.2ch; }
+.gauge-unit { font-size: 13px; color: var(--muted); }
+.gauge-meter { height: 4px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+#hud-speed-meter { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--sand), #f08a4b); transition: width .2s; }
+.camera-switch { display: flex; align-items: center; gap: 4px; }
+.icon-btn { width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; background: rgba(255,255,255,0.05); cursor: pointer; }
+.icon-btn:hover { background: rgba(255,255,255,0.1); }
+.camera-current { flex: 1; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: rgba(255,255,255,0.05); cursor: pointer; font-size: 13px; min-width: 0; }
+.camera-current span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; text-align: right; }
+
+/* popovers */
+.popover { margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: rgba(28,22,17,0.94); color: var(--ink); max-height: min(70vh, 520px); overflow: auto; width: min(300px, calc(100vw - 32px)); box-shadow: 0 16px 40px rgba(0,0,0,0.45); }
+#teleport-popover { position: fixed; inset: auto; top: calc(74px + env(safe-area-inset-top, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); }
+#camera-popover { position: fixed; inset: auto; bottom: calc(150px + env(safe-area-inset-bottom, 0px)); left: max(16px, env(safe-area-inset-left, 0px)); }
+.pop-title { font-size: 11px; color: var(--muted); letter-spacing: .04em; padding: 8px 10px 4px; }
+.pop-item { display: grid; gap: 1px; width: 100%; text-align: right; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; cursor: pointer; }
+.pop-item:hover, .pop-item.active { background: rgba(255,255,255,0.08); }
+.pop-item.active .pop-name { color: var(--sand); }
+.pop-name { font-size: 14px; font-weight: 600; }
+.pop-sub { font-size: 12px; color: var(--muted); }
+
+/* atlas */
+.fullmap-modal { position: fixed; inset: 0; z-index: 30; background: #c9b38e; }
+#fullmap-canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.fullmap-ui { position: absolute; inset: 0; pointer-events: none; display: grid; grid-template-rows: auto 1fr auto; gap: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: calc(14px + env(safe-area-inset-top, 0px)) calc(14px + env(safe-area-inset-bottom, 0px)); }
+.fullmap-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+.fullmap-title { padding: 12px 16px; display: grid; gap: 2px; }
+.fullmap-title h2 { margin: 0; font-family: var(--f-display); font-size: 20px; }
+.fullmap-title p { margin: 0; font-size: 12px; color: var(--muted); font-family: var(--f-data); direction: ltr; text-align: right; }
+.search-wrap { flex: 1 1 260px; max-width: 420px; display: grid; gap: 6px; }
+.search-box { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 44px; }
+.search-box input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; color: var(--ink); font: inherit; font-size: 14px; outline: none; }
+#fullmap-results:empty { display: none; }
+#fullmap-results { padding: 6px; }
+.fullmap-close { margin-inline-start: auto; }
+.fullmap-foot { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.pin-card { padding: 10px 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+#fullmap-pin-label { font-size: 14px; font-weight: 600; min-width: 0; }
+.go-btn { height: 38px; padding: 0 16px; border: 0; border-radius: 8px; background: var(--green); color: #fff; font-weight: 700; cursor: pointer; }
+.go-btn:disabled { background: rgba(255,255,255,0.12); color: var(--muted); cursor: default; }
+.zoom-stack { display: grid; gap: 4px; padding: 5px; }
+
+/* touch */
+#touch-controls { position: fixed; z-index: 11; inset: auto 0 0 0; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-end;
+  padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); padding-block: 0 calc(84px + env(safe-area-inset-bottom, 0px)); direction: ltr; }
+#touch-stick { pointer-events: auto; width: 128px; height: 128px; border-radius: 50%; background: rgba(28,22,17,0.45); border: 1px solid var(--line); display: grid; place-items: center; touch-action: none; }
+#touch-stick-knob { width: 52px; height: 52px; border-radius: 50%; background: rgba(251,246,236,0.85); }
+.touch-actions { display: grid; gap: 10px; pointer-events: auto; }
+.touch-action { width: 66px; height: 66px; border-radius: 50%; border: 1px solid var(--line); background: rgba(28,22,17,0.6); display: grid; place-items: center; font-size: 12px; line-height: 1.1; touch-action: none; }
+.touch-action[aria-pressed="true"] { background: var(--sand); color: #2a1d10; }
+
+@media (max-width: 900px) {
+  .seg-label, .tool-label, .mode-label, .controls-hint, .toolbar kbd, .mode-btn kbd { display: none; }
+  .cluster { min-width: 0; padding: 10px; }
+  #hud-speed { font-size: 30px; }
+  .radar { width: 124px; height: 124px; }
+  .sign { min-width: 0; max-width: 220px; }
+  .sign-ar { font-size: 16px; }
+}
+@media (max-width: 640px) {
+  .hud-bottom { flex-wrap: wrap; justify-content: center; }
+  .dock-center { order: -1; width: 100%; }
+  .cluster { display: none; }
+  .radar { width: 104px; height: 104px; }
+  .brand-subtitle { display: none; }
+  .brand h1 { font-size: 18px; }
+  .brand-mark { width: 32px; height: 32px; font-size: 18px; }
+}
+/* touch screens: the thumbs own the bottom corners, so the map and the street sign move up */
+@media (pointer: coarse) {
+  .hud-bottom .cluster, .controls-hint, .brand-subtitle { display: none; }
+  .hud-bottom { justify-content: center; }
+  .dock-center { order: 0; width: auto; }
+  .brand { padding: 8px 12px; gap: 10px; }
+  .brand h1 { font-size: 17px; white-space: nowrap; }
+  .brand-mark { width: 30px; height: 30px; font-size: 17px; border-radius: 8px; }
+  .osm-credit { font-size: 9.5px; }
+  .toolbar { padding: 4px; }
+  .tool-btn, .time-btn { height: 34px; padding: 0 9px; }
+  .mode-btn { height: 44px; padding: 0 16px; }
+  .dock-start { position: fixed; z-index: 10; top: calc(118px + env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); flex-direction: column; align-items: flex-end; gap: 8px; }
+  .radar { width: 96px; height: 96px; }
+  .sign { min-width: 0; max-width: 190px; padding: 6px 10px 7px; }
+  .sign-ar { font-size: 14px; }
+  .sign-en { font-size: 11px; }
+  .sign-meta { display: none; }
+}
+@media (pointer: coarse) and (orientation: landscape) {
+  .dock-start { top: calc(78px + env(safe-area-inset-top, 0px)); right: auto; left: max(16px, env(safe-area-inset-left, 0px)); flex-direction: row-reverse; align-items: flex-start; }
+  .radar { width: 84px; height: 84px; }
+  #touch-controls { padding-block: 0 calc(16px + env(safe-area-inset-bottom, 0px)); padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+  .hud-bottom { justify-content: center; }
+}
+/* computers: only the climb and descend buttons, at the right edge, while flying */
+@media (pointer: fine) {
+  #touch-stick, .touch-action[data-touch-action="boost"] { display: none; }
+  #touch-controls { justify-content: flex-end; padding-block: 0 calc(50vh - 80px); }
+  .touch-action { width: 58px; height: 58px; cursor: pointer; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<svg class="icon-sprite" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.4" r="2"/><path d="M12.3 8.2 10.8 13.8M10.8 13.8 9.2 17.2 7.2 20.5M10.8 13.8l2.4 3 1.6 3.8M12.3 8.6 9.6 10.2l-.8 2.6M12.3 8.6l2.1 2.4 2.4.8"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="m5.2 10.5 1.4-4.1A2.2 2.2 0 0 1 8.7 4.8h6.6a2.2 2.2 0 0 1 2.1 1.6l1.4 4.1"/><rect x="3" y="10.5" width="18" height="6.5" rx="2"/><path d="M6 17v2.6M18 17v2.6M6.6 13.8h1.6M15.8 13.8h1.6"/></symbol>
+    <symbol id="i-heli" viewBox="0 0 24 24"><path d="M3.5 4h15M11 4v3.2"/><path d="M6 12.2a5 5 0 0 1 5-5h1.6a4.4 4.4 0 0 1 4.4 4.4V15H8.8A2.8 2.8 0 0 1 6 12.2z"/><path d="M17 11h4.2M21.2 8.8v4.4M7 19h10.5M9.5 15v4M15 15v4"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5 7 7M17 17l1.5 1.5M5.5 18.5 7 17M17 7l1.5-1.5"/></symbol>
+    <symbol id="i-dusk" viewBox="0 0 24 24"><path d="M3 17.5h18M7 17.5a5 5 0 0 1 10 0M12 5v3M5.6 9.6l2 1.6M18.4 9.6l-2 1.6M7.5 21h9"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1z"/></symbol>
+    <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8.5h11.5a2.8 2.8 0 1 0-2.8-2.8M3 12.5h16a2.8 2.8 0 1 1-2.8 2.8M3 16.5h8"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.2s-6.6-5.7-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 5.5-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.6v13l5.5-2.1 6 2.1 5.5-2.1v-13L15 6.6 9 4.5zM9 4.5v13M15 6.6v13"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17M10.6 5.6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.4 3.2M6.6 6.6A15.6 15.6 0 0 0 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3.1-.4 4.4-1.1M9.9 9.9a2.8 2.8 0 0 0 4.2 4.2"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 6.5 9 12l5.5 5.5"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24"><path d="m9.5 6.5 5.5 5.5-5.5 5.5"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><rect x="2.8" y="6.5" width="12.4" height="11" rx="2.4"/><path d="m15.2 10.4 6-3.4v10l-6-3.4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.5 12h13"/></symbol>
+    <symbol id="i-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.4"/><circle cx="12" cy="12" r="1.7" fill="currentColor"/><path d="M12 2.5v3.1M12 18.4v3.1M2.5 12h3.1M18.4 12h3.1"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/></symbol>
+  </defs>
+</svg>
+
+<div id="app" dir="rtl" lang="ar">
+  <div id="loading-overlay" role="status" aria-live="polite">
+    <div class="loader">
+      <div class="loader-mark">الرياض</div>
+      <div class="loader-sub">Slop Riyadh · 24.7136° N 46.6753° E</div>
+      <div class="loader-track" aria-hidden="true"><span id="loading-progress"></span></div>
+      <div id="loading-status">تشغيل المحرّك…</div>
+    </div>
+  </div>
+
+  <main id="canvas-container" aria-label="مشهد الرياض ثلاثي الأبعاد"></main>
+
+  <div id="hud">
+    <div class="hud-row">
+      <header class="panel brand">
+        <span class="brand-mark" aria-hidden="true">ر</span>
+        <div>
+          <h1>سلوب <span>الرياض</span></h1>
+          <div class="brand-subtitle">three.js · WebGL · <span id="hud-fps" class="fps-ok">٦٠</span> fps</div>
+          <a class="osm-credit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a>
+        </div>
+      </header>
+      <div class="panel toolbar keep" id="hud-toolbar">
+        <div role="group" aria-label="الوقت والطقس" style="display:flex;gap:2px;flex-wrap:wrap">
+          <button class="time-btn" data-time="noon" type="button" title="الظهيرة"><svg class="icon" aria-hidden="true"><use href="#i-sun"/></svg><span class="seg-label">الظهيرة</span></button>
+          <button class="time-btn active" data-time="maghrib" type="button" title="المغرب"><svg class="icon" aria-hidden="true"><use href="#i-dusk"/></svg><span class="seg-label">المغرب</span></button>
+          <button class="time-btn" data-time="night" type="button" title="الليل"><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg><span class="seg-label">الليل</span></button>
+          <button class="time-btn" data-time="haboob" type="button" title="عاصفة رملية (هبوب)"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg><span class="seg-label">هبوب</span></button>
+        </div>
+        <span class="toolbar-divider" aria-hidden="true"></span>
+        <button class="tool-btn" type="button" popovertarget="teleport-popover" title="انتقال سريع"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span class="tool-label">انتقال</span></button>
+        <button id="btn-open-map" class="tool-btn" type="button" title="خريطة الرياض [M]"><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><span class="tool-label">الخريطة</span><kbd>M</kbd></button>
+        <button id="btn-toggle-hud" class="tool-btn icon-only" type="button" title="إخفاء الواجهة [H]" aria-label="إخفاء الواجهة" aria-pressed="false">
+          <svg class="icon icon-hide" aria-hidden="true"><use href="#i-eye"/></svg><svg class="icon icon-show" aria-hidden="true"><use href="#i-eye-off"/></svg>
+        </button>
+      </div>
+    </div>
+    <div></div>
+    <div class="hud-row hud-bottom">
+      <div class="dock-start">
+        <div class="radar panel" id="minimap-card" role="button" tabindex="0" aria-label="افتح الخريطة الكاملة [M]">
+          <canvas id="minimap-canvas"></canvas>
+          <span class="radar-north" id="radar-north" aria-hidden="true">N</span>
+        </div>
+        <div class="sign" aria-live="off">
+          <div class="sign-ar" id="sign-ar">طريق الملك فهد</div>
+          <div class="sign-en" id="sign-en">King Fahd Rd</div>
+          <div class="sign-meta"><span id="sign-district">حي العليا</span><span id="hud-coords">24.7114°N 46.6744°E</span></div>
+        </div>
+      </div>
+      <div class="dock-center">
+        <div class="controls-hint" id="hud-controls-hint"></div>
+        <nav class="panel mode-switch" aria-label="طريقة التنقل">
+          <button class="mode-btn" data-mode="person" type="button" title="مشي [1]"><svg class="icon" aria-hidden="true"><use href="#i-walk"/></svg><span class="mode-label">مشي</span><kbd>1</kbd></button>
+          <button class="mode-btn active" data-mode="car" type="button" title="قيادة [2]"><svg class="icon" aria-hidden="true"><use href="#i-car"/></svg><span class="mode-label">قيادة</span><kbd>2</kbd></button>
+          <button class="mode-btn" data-mode="heli" type="button" title="طيران [3]"><svg class="icon" aria-hidden="true"><use href="#i-heli"/></svg><span class="mode-label">طيران</span><kbd>3</kbd></button>
+        </nav>
+      </div>
+      <section class="panel cluster" aria-label="السرعة والكاميرا">
+        <div class="gauge-top"><span id="hud-active-mode">لاندكروزر أبيض</span><span><span id="hud-alt-label">فوق سطح البحر</span> <span id="hud-altitude">٦١٢</span> م</span></div>
+        <div class="gauge-speed"><span id="hud-speed">٠</span><span class="gauge-unit">كم/س</span></div>
+        <div class="gauge-meter" aria-hidden="true"><span id="hud-speed-meter"></span></div>
+        <div class="camera-switch">
+          <button id="cam-next" class="icon-btn" type="button" aria-label="الكاميرا التالية [V]"><svg class="icon" aria-hidden="true"><use href="#i-right"/></svg></button>
+          <button class="camera-current" type="button" popovertarget="camera-popover" title="كل الكاميرات [V]"><svg class="icon" aria-hidden="true"><use href="#i-camera"/></svg><span id="hud-active-camera">مطاردة</span><kbd>V</kbd></button>
+          <button id="cam-prev" class="icon-btn" type="button" aria-label="الكاميرا السابقة"><svg class="icon" aria-hidden="true"><use href="#i-left"/></svg></button>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="teleport-popover" class="popover" popover aria-label="انتقال سريع">
+    <div class="pop-title">انتقل إلى</div>
+    <div id="teleport-list"></div>
+  </div>
+  <div id="camera-popover" class="popover" popover aria-label="الكاميرات">
+    <div id="camera-list"></div>
+  </div>
+
+  <section id="fullmap-modal" class="fullmap-modal" role="dialog" aria-modal="true" aria-label="خريطة الرياض" hidden>
+    <canvas id="fullmap-canvas"></canvas>
+    <div class="fullmap-ui">
+      <div class="fullmap-head">
+        <div class="panel fullmap-title"><h2>أطلس شوارع الرياض</h2><p id="fullmap-coords"></p></div>
+        <div class="search-wrap">
+          <label class="panel search-box"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input id="fullmap-search" type="text" placeholder="ابحث: المملكة، التحلية، الملز، King Fahd…" aria-label="ابحث عن معلم أو حي أو طريق" autocomplete="off" spellcheck="false">
+          </label>
+          <div id="fullmap-results" class="panel"></div>
+        </div>
+        <button id="fullmap-close" class="panel tool-btn fullmap-close" type="button" aria-label="إغلاق الخريطة"><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg><span class="tool-label">إغلاق</span><kbd>Esc</kbd></button>
+      </div>
+      <div></div>
+      <div class="fullmap-foot">
+        <div class="panel pin-card"><span id="fullmap-pin-label">اضغط على الخريطة لاختيار وجهة</span><button id="fullmap-go" class="go-btn" type="button" disabled>انتقل إلى هنا</button></div>
+        <div class="panel zoom-stack">
+          <button id="fullmap-zoom-in" class="icon-btn" type="button" aria-label="تكبير"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg></button>
+          <button id="fullmap-zoom-out" class="icon-btn" type="button" aria-label="تصغير"><svg class="icon" aria-hidden="true"><use href="#i-minus"/></svg></button>
+          <button id="fullmap-locate" class="icon-btn" type="button" aria-label="موقعي"><svg class="icon" aria-hidden="true"><use href="#i-locate"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="touch-controls" aria-label="أدوات اللمس" hidden>
+    <div id="touch-stick" role="group" aria-label="عصا الحركة"><span id="touch-stick-knob"></span></div>
+    <div class="touch-actions">
+      <button class="touch-action" data-touch-action="up" type="button" aria-pressed="false"><span aria-hidden="true">↑</span><span data-touch-label="up">قفز</span></button>
+      <button class="touch-action" data-touch-action="down" type="button" aria-pressed="false" hidden><span aria-hidden="true">↓</span><span>هبوط</span></button>
+      <button class="touch-action" data-touch-action="boost" type="button" aria-pressed="false"><span>تيربو</span></button>
+    </div>
+  </section>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="./js/main.js"></script>
+</body></html>
