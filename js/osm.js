@@ -37,6 +37,8 @@ export class OSM {
     const s = this.s;
     this.nRoads = s.roads.length / 4;
     this.nBld = s.buildings.length / 4;
+    this.vprof = new Map();
+    if (s.roadZ) for (let i = 0; i < s.roadZ.length; i += 4) this.vprof.set(s.roadZ[i], { y0: s.roadZ[i + 1], y1: s.roadZ[i + 2], H: s.roadZ[i + 3] });
     this.nFill = s.fillStyle.length;
     // cumulative length per road vertex (for markings, bridge ramps, traffic)
     this.rLen = new Float32Array(s.roadPts.length / 2);
@@ -132,14 +134,18 @@ export class OSM {
   // posted speed limit in km/h from OSM maxspeed, 0 when unknown
   maxspeed(r) { return this.s.roads[r * 4 + 1] >>> 16; }
   // height of a road at distance s along it: bridges rise from both ends to a 7 m deck
+  // height of a road at distance s along it. Bridges and tunnels carry a profile from the data
+  // (deck/floor height H, and the heights of their two ends, which stay up/down where the structure continues)
   roadY(r, sAlong) {
-    const f = this.flags(r);
-    if (!(f & F.bridge)) return 0;
-    const L = this.roadLen[r], ramp = Math.min(110, L * 0.45);
-    const k = Math.min(1, sAlong / ramp, (L - sAlong) / ramp);
-    const e = Math.max(0, k);
-    return 7.2 * e * e * (3 - 2 * e);
+    const v = this.vprof.get(r);
+    if (!v) return 0;
+    const L = this.roadLen[r], ramp = Math.max(1, Math.min(v.H > 0 ? 110 : 90, L * 0.45));
+    const sm = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+    const a = v.y0 + (v.H - v.y0) * sm(sAlong / ramp);
+    const b = v.y1 + (v.H - v.y1) * sm((L - sAlong) / ramp);
+    return v.H > 0 ? Math.min(a, b) : Math.max(a, b);
   }
+  profile(r) { return this.vprof.get(r); }
   // nearest road segment to a point; filter(r) may reject roads
   nearestRoad(x, z, maxD = 60, filter) {
     let best = null, bd = maxD;

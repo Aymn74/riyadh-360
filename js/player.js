@@ -144,8 +144,9 @@ export class Player {
   canStand(x, z) {
     for (const c of LANDMARK_COLLIDERS) if ((x - c.x) ** 2 + (z - c.z) ** 2 < c.r * c.r) return false;
     if (!this.osm) return true;
-    // on a bridge deck nothing below matters
+    // on a bridge deck nothing below matters; below grade only the roadway itself is open
     if (this.gy > 2) return true;
+    if (this.gy < -1.2) { const h = this.osm.nearestRoad(x, z, 4, (r) => { const p = this.osm.profile(r); return p && p.H < 0; }); return !!(h && h.dist < -0.3); }
     return !this.osm.insideBuilding(x, z, this.mode === 'car' ? 1.2 : 0.3);
   }
   // top of whatever stands at a point (mapped buildings, generated houses, landmarks)
@@ -159,7 +160,7 @@ export class Player {
   groundAt(x, z) {
     if (!this.osm) return 0;
     const osm = this.osm;
-    const hit = osm.nearestRoad(x, z, 3, (r) => osm.flags(r) & F.bridge);
+    const hit = osm.nearestRoad(x, z, 3, (r) => osm.profile(r));
     if (hit && hit.dist < 0.5) {
       const y = osm.roadY(hit.road, hit.along) + 0.12;
       if (Math.abs(y - this.gy) < 2.5) return y;

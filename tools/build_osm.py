@@ -122,6 +122,7 @@ CLS = {'motorway': 0, 'trunk': 1, 'primary': 2, 'secondary': 3, 'tertiary': 4, '
 WIDTH = {0: (11.5, 22), 1: (11, 21), 2: (10.5, 16), 3: (9, 14), 4: (7.5, 12), 5: (7, 9), 6: (7.5, 10), 7: (6, 7), 8: (4.5, 5.5),
          9: (6.5, 9), 10: (6.5, 9), 11: (6, 8)}
 roads = []
+prof = []         # (road index, deck/floor height, first point, last point)
 road_lines = []   # for the fill rasteriser: (pts, width, cls)
 n_tunnel = 0
 for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highway, other_tags from lines where highway is not null"):
@@ -136,7 +137,7 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
     ow = t.get('oneway') in ('yes', '1', '-1') or hw in ('motorway',) or t.get('junction') == 'roundabout'
     rev = t.get('oneway') == '-1'
     layer = int(t.get('layer', '0')) if t.get('layer', '0').lstrip('-').isdigit() else 0
-    tunnel = t.get('tunnel') in ('yes', 'building_passage', 'culvert') or (layer < 0 and t.get('covered') == 'yes')
+    tunnel = t.get('tunnel') in ('yes', 'culvert') or (layer < 0 and t.get('covered') == 'yes')   # building passages stay at grade
     bridge = t.get('bridge') not in (None, 'no') or layer > 0
     try:
         lanes = int(t.get('lanes', '0').split(';')[0])
@@ -165,10 +166,37 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
         if len(p) < 2:
             continue
         s, n = add_pts(p, 'road')
+        # vertical profile: bridges one storey (7 m) per layer, tunnels 7 m down, cuttings an open trench
+        if bridge:
+            prof.append((len(roads), 7.0 * max(1, min(3, layer)), p[0], p[-1]))
+        elif tunnel:
+            prof.append((len(roads), -7.0 * max(1, min(3, -layer if layer < 0 else 1)), p[0], p[-1]))
+        elif t.get('cutting') in ('yes', 'both', 'left', 'right') or (layer < 0):
+            prof.append((len(roads), -6.5, p[0], p[-1]))
         roads.append((cls | flags << 8 | min(lanes, 15) << 16 | int(width * 10 / 2) << 24, (0xFFFF if nid == 0xFFFFFFFF else nid) | maxspeed << 16, s, n))
         if not tunnel:
             road_lines.append((p, width, cls))
 road_pt_end = len(PTS['road']) // 2
+# Ends of a raised or sunken way stay at its height when another way of the same kind continues there
+# (long bridges and tunnels are split into several OSM ways); otherwise they meet the ground.
+node_prof = {}
+key = lambda q: (round(q[0] * 10), round(q[1] * 10))
+for idx, H, a, b in prof:
+    for q in (a, b):
+        node_prof.setdefault(key(q), []).append((idx, H))
+road_z = []
+for idx, H, a, b in prof:
+    ends = []
+    for q in (a, b):
+        y = 0.0
+        for j, Hj in node_prof[key(q)]:
+            if j != idx and (Hj > 0) == (H > 0):
+                c = math.copysign(min(abs(H), abs(Hj)), H)
+                y = c if abs(c) > abs(y) else y
+        ends.append(y)
+    road_z.append((idx, ends[0], ends[1], H))
+print('profiles', len(road_z), 'bridges', sum(1 for r in road_z if r[3] > 0), 'sunken', sum(1 for r in road_z if r[3] < 0),
+      'linked ends', sum((r[1] != 0) + (r[2] != 0) for r in road_z))
 print('roads', len(roads), 'tunnels', n_tunnel, 'pts', road_pt_end)
 
 # ---------------------------------------------------------------- buildings
@@ -467,7 +495,7 @@ def write(fname, parts):
 
 u32 = lambda rows: np.asarray(rows, np.uint32).reshape(-1) if rows else np.zeros(0, np.uint32)
 f32 = lambda rows: np.asarray(rows, np.float32).reshape(-1) if rows else np.zeros(0, np.float32)
-write('riyadh-roads.bin', [('roads', u32(roads)), ('roadPts', f32(PTS['road'])), ('land', u32(land)), ('landPts', f32(PTS['land'])),
+write('riyadh-roads.bin', [('roads', u32(roads)), ('roadPts', f32(PTS['road'])), ('roadZ', f32(road_z)), ('land', u32(land)), ('landPts', f32(PTS['land'])),
                            ('rail', u32(rail)), ('railPts', f32(PTS['rail']))])
 write('riyadh-buildings.bin', [('buildings', u32(buildings)), ('bldPts', f32(PTS['bld'])), ('mosques', f32(mosques))])
 # infill packed to 12 bytes: f32 x, f32 z, u8 yaw/2pi*256, u8 width*4, u8 depth*4, u8 (height-2)*4 -> as 4 bytes

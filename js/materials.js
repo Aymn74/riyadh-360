@@ -14,8 +14,17 @@ export const U = {
 // Box styles (instance attribute aStyle)
 export const ST = {
   villa: 0, wall: 1, shop: 2, apt: 3, glass: 4, stone: 5, mud: 6, slab: 7, plain: 8, mosque: 9,
-  lamp: 10, green: 11, paint: 12, median: 13, led: 14, sign: 15
+  lamp: 10, green: 11, paint: 12, median: 13, led: 14, sign: 15, tunnelLamp: 16
 };
+
+// Open trenches cut a hole in the ground: these invisible quads mark the stencil buffer, and the ground,
+// pavements and parks skip the marked pixels so the sunken roadway shows through.
+export const holeMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, stencilWrite: true, stencilRef: 1,
+  stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp });
+export function skipHoles(m) {
+  Object.assign(m, { stencilWrite: true, stencilRef: 1, stencilFunc: THREE.NotEqualStencilFunc, stencilFail: THREE.KeepStencilOp, stencilZFail: THREE.KeepStencilOp, stencilZPass: THREE.KeepStencilOp });
+  return m;
+}
 
 const HEAD = /* glsl */`
 uniform float uNight; uniform float uTime; uniform vec2 uFocus; uniform float uDetailR; uniform float uDust;
@@ -55,6 +64,7 @@ const FACADE = /* glsl */`
   vec3 base = diffuseColor.rgb;
   // lamp heads, minaret rings, LED bands, signs, paint
   if (st == 10.0) { gEmis = vec3(1.0, 0.84, 0.6) * 7.0 * uNight; diffuseColor.rgb = vec3(0.95); }
+  else if (st == 16.0) { gEmis = vec3(1.0, 0.86, 0.62) * 4.0; diffuseColor.rgb = vec3(0.95); }
   else if (st == 11.0) { gEmis = vec3(0.15, 1.0, 0.35) * 3.5 * uNight; diffuseColor.rgb = vec3(0.6, 0.9, 0.7); }
   else if (st == 14.0) {
     vec3 led = 0.5 + 0.5 * cos(6.2831 * (uTime * 0.05 + vSeed + vec3(0.0, 0.33, 0.67)));

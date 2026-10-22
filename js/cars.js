@@ -16,7 +16,7 @@ export class Cars {
     const s = osm.s, P = s.roadPts;
     this.nodes = new Map();
     for (let r = 0; r < osm.nRoads; r++) {
-      if (!DRIVE.has(osm.cls(r)) || osm.flags(r) & F.tunnel) continue;
+      if (!DRIVE.has(osm.cls(r))) continue;
       const st = s.roads[r * 4 + 2], n = s.roads[r * 4 + 3];
       for (const [end, i] of [[0, st], [1, st + n - 1]]) {
         const k = nodeKey(P[i * 2], P[i * 2 + 1]);

@@ -7,7 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import * as G from './geo.js';
-import { U, makeGroundMaterial, makeSky, poolMat } from './materials.js';
+import { U, makeGroundMaterial, makeSky, poolMat, skipHoles } from './materials.js';
 import { buildLandmarks } from './landmarks.js';
 import { Player } from './player.js';
 import { OSM, RC, F, SEG } from './osm.js';
@@ -20,7 +20,7 @@ const nextFrame = () => new Promise((r) => requestAnimationFrame(r));
 
 // ---------- renderer & scene ----------
 const touch = matchMedia('(pointer: coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: true, stencil: true, logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -53,7 +53,9 @@ sun.shadow.radius = 3;
 scene.add(sun, sun.target);
 
 // ground and the arterial carriageways (they run on into the desert)
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(90000, 90000).rotateX(-Math.PI / 2), makeGroundMaterial());
+// tessellated: one huge triangle pair loses depth precision and swallows the roads seen from above
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(90000, 90000, 180, 180).rotateX(-Math.PI / 2), makeGroundMaterial());
+skipHoles(ground.material);   // open trenches show through the ground
 ground.position.y = -0.25;   // a clear gap below pavements and roads
 ground.receiveShadow = true;
 scene.add(ground);
@@ -105,7 +107,7 @@ const dust = (() => {
 let composer = null, bloom = null;
 {
   // multisampled HDR target with a full depth buffer; phones skip the bloom pass
-  const rt = new THREE.WebGLRenderTarget(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio(), { type: THREE.HalfFloatType, samples: touch ? 2 : 3 });
+  const rt = new THREE.WebGLRenderTarget(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio(), { type: THREE.HalfFloatType, samples: touch ? 2 : 3, stencilBuffer: true });
   composer = new EffectComposer(renderer, rt);
   composer.addPass(new RenderPass(scene, camera));
   if (!touch) {
@@ -293,19 +295,20 @@ function updateCamera(dt) {
   let dist, up, look;
   if (id === 'top') { dist = 60 * orbitCtl.zoom; up = 140 * orbitCtl.zoom; look = 0; }
   else {
-    dist = (player.mode === 'person' ? 5.5 : player.mode === 'car' ? 11 : 30) * orbitCtl.zoom;
+    dist = (player.mode === 'person' ? 5.5 : player.mode === 'car' ? 11 : 30) * orbitCtl.zoom * (player.gy < -2 && player.mode !== 'heli' ? 0.75 : 1);
     up = 0; look = player.mode === 'person' ? 1.5 : player.mode === 'car' ? 1.6 : 2.5;
   }
   const yaw = player.yaw + orbitCtl.yaw + Math.PI;
   const pitch = id === 'top' ? 1.1 : orbitCtl.pitch + (player.mode === 'heli' ? 0.12 : 0);
-  const base = player.mode === 'heli' ? player.alt : player.mode === 'person' ? player.alt : 0;
+  const base = player.mode === 'heli' ? player.alt : player.gy + (player.mode === 'person' ? player.alt : 0);
   const target = new THREE.Vector3(p.x, base + look, p.z);
   const want = new THREE.Vector3(
     p.x + Math.cos(yaw) * Math.cos(pitch) * dist,
     base + look + Math.sin(pitch) * dist + up,
     p.z - Math.sin(yaw) * Math.cos(pitch) * dist
   );
-  want.y = Math.max(want.y, 0.6);
+  want.y = Math.max(want.y, 0.6 + Math.min(0, player.gy));
+  if (player.mode !== 'heli' && player.gy < -2) { want.y = Math.min(want.y, player.gy + 4.6); }
   const k = 1 - Math.exp(-dt * (player.mode === 'car' ? 7 : 5));
   camPos.lerp(want, camPos.distanceTo(want) > 300 ? 1 : k);
   if (player.mode === 'heli') camPos.y += (want.y - camPos.y) * Math.min(1, k * 3);
@@ -500,17 +503,20 @@ function drawRoadsOn(ctx, toScreen, scale, x0, z0, x1, z1) {
   const maxCls = scale < 0.03 ? RC.secondary : scale < 0.08 ? RC.tertiary : 11;
   const seen = new Set(), P = osm.s.roadPts;
   const order = [];
-  osm.forItems(osm.segGrid, x0, z0, x1, z1, (v) => { const r = Math.floor(v / SEG); if (seen.has(r)) return; seen.add(r); const c = osm.cls(r); if (c <= maxCls && !(osm.flags(r) & F.tunnel)) order.push(r); });
+  osm.forItems(osm.segGrid, x0, z0, x1, z1, (v) => { const r = Math.floor(v / SEG); if (seen.has(r)) return; seen.add(r); const c = osm.cls(r); if (c <= maxCls) order.push(r); });
   order.sort((a, b) => osm.cls(b) - osm.cls(a));
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
   for (const r of order) {
     const c = osm.cls(r), st = osm.s.roads[r * 4 + 2], n = osm.s.roads[r * 4 + 3];
-    ctx.strokeStyle = ROAD_COL[c];
+    const tun = osm.flags(r) & F.tunnel;
+    ctx.strokeStyle = tun ? '#8d867b' : ROAD_COL[c];
+    ctx.setLineDash(tun ? [5, 4] : []);
     ctx.lineWidth = Math.max(ROAD_MIN[c], osm.width(r) * scale);
     ctx.beginPath();
     for (let i = 0; i < n; i++) { const q = toScreen(P[(st + i) * 2], P[(st + i) * 2 + 1]); i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); }
     ctx.stroke();
   }
+  ctx.setLineDash([]);
   ctx.lineCap = 'butt';
 }
 function drawBlocks(ctx, toScreen, x0, z0, x1, z1) {

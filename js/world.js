@@ -2,7 +2,7 @@
 // buildings, parks and water, generated infill villas, mosques, metro viaducts, then (near the camera)
 // street lamps with light pools, palms and the small rooftop and compound details.
 import * as THREE from 'three';
-import { ST, makeBuildingMaterial, makeRoadMaterial, makeWalkMaterial, makeLandMaterial, landColor, poolMat, poolGeo, palmTrunkMat, palmCrownMat } from './materials.js';
+import { ST, makeBuildingMaterial, makeRoadMaterial, makeWalkMaterial, makeLandMaterial, landColor, poolMat, poolGeo, palmTrunkMat, palmCrownMat, holeMat, skipHoles } from './materials.js';
 import { Batch, boxGeo, capGeo, domeGeo, palm, domeMat, capMat } from './city.js';
 import { RC, F } from './osm.js';
 import { rng } from './geo.js';
@@ -24,7 +24,8 @@ const pal = (st, seed) => { const p = PAL[st] || PAL[3]; return p[Math.floor(see
 const WHITE = col('#f4f4f0'), POLE = col('#6d7176'), LAMP = col('#fff1cf'), DECK = col('#d7d3ca');
 const ART_LIGHT = new THREE.Color(1.0, 0.9, 0.74).multiplyScalar(0.2), LOCAL_LIGHT = new THREE.Color(1.0, 0.7, 0.4).multiplyScalar(0.26);
 
-const roadMat = makeRoadMaterial(), walkMat = makeWalkMaterial(), landMat = makeLandMaterial();
+const roadMat = makeRoadMaterial(), walkMat = skipHoles(makeWalkMaterial()), landMat = skipHoles(makeLandMaterial());
+const CONCRETE = col('#b9b2a6'), TUNNEL_WALL = col('#cfc9bd'), TUNNEL_LAMP = col('#fff4dc');
 const bldMat = makeBuildingMaterial({ always: true, fac: true });
 const boxMat = makeBuildingMaterial({ always: true });
 
@@ -52,7 +53,6 @@ export class World {
     const s = osm.s, P = s.roadPts;
     for (let r = 0; r < osm.nRoads; r++) {
       const st = s.roads[r * 4 + 2], n = s.roads[r * 4 + 3];
-      if (osm.flags(r) & F.tunnel) continue;
       for (let i = 0; i < n - 1; i++) {
         const a = (st + i) * 2;
         const key = this.key((P[a] + P[a + 2]) / 2, (P[a + 1] + P[a + 3]) / 2);
@@ -101,7 +101,8 @@ export class World {
       const last = runs[runs.length - 1];
       if (last && last.r === r && last.i1 === i) last.i1 = i + 1; else runs.push({ r, i0: i, i1: i + 1 });
     }
-    for (const run of runs) this.ribbon(run, road, walk, boxes);
+    const holes = new Geo({ position: 3 });
+    for (const run of runs) this.ribbon(run, road, walk, boxes, holes);
     // buildings
     const bg = new Geo({ position: 3, normal: 3, color: 3, aFac: 4, aStyle: 1, aSeed: 1 });
     for (const b of this.bldByChunk.get(key) || []) this.extrude(b, bg, boxes);
@@ -132,6 +133,7 @@ export class World {
       for (let t = 0; t < L; t += 32) boxes.boxW(x0 + (x1 - x0) * (t / L), z0 + (z1 - z0) * (t / L), 2.4, 2.4, 0, 11, yaw, DECK, ST.plain);
     }
     const add = (geo, mat, cast = false) => { if (!geo) return; const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.castShadow = cast; g.add(m); return m; };
+    const hm = add(holes.build(), holeMat); if (hm) { hm.renderOrder = -5; hm.receiveShadow = false; }
     add(walk.build(), walkMat);
     add(road.build(), roadMat);
     add(lg.build(), landMat);
@@ -142,7 +144,7 @@ export class World {
     addI(caps, capGeo, capMat, false);
     return g;
   }
-  ribbon(run, road, walk, boxes) {
+  ribbon(run, road, walk, boxes, holes) {
     const osm = this.osm, s = osm.s, P = s.roadPts;
     const r = run.r, st = s.roads[r * 4 + 2];
     const cls = osm.cls(r), flags = osm.flags(r), hw = osm.width(r) / 2;
@@ -165,7 +167,8 @@ export class World {
       }
       nor.push([-dz * k, dx * k]);   // right-hand side
     }
-    const bridge = flags & F.bridge;
+    const prof = osm.profile(r);
+    const bridge = prof && prof.H > 0, sunken = prof && prof.H < 0, covered = sunken && (flags & F.tunnel);
     const emit = (geo, half, y0, isWalk) => {
       const base = geo.count;
       for (let i = 0; i < n; i++) {
@@ -178,14 +181,15 @@ export class World {
       void isWalk;
     };
     emit(road, hw, yBase, false);
-    if (!bridge && cls >= RC.primary && cls <= RC.living) emit(walk, hw + 3.4, 0.07, true);
+    if (!prof && cls >= RC.primary && cls <= RC.living) emit(walk, hw + 3.4, 0.07, true);
+    if (sunken) this.sunken(r, pts, hw, covered, boxes, holes);
     if (bridge) {
       // deck edges and piers
       for (let i = 0; i < n - 1; i++) {
         const [x0, z0, a0] = pts[i], [x1, z1, a1] = pts[i + 1];
         const Ls = Math.hypot(x1 - x0, z1 - z0); if (Ls < 0.5) continue;
         const yaw = Math.atan2(-(z1 - z0), x1 - x0);
-        const ym = osm.roadY(r, (a0 + a1) / 2);
+        const ym = Math.min(osm.roadY(r, a0), osm.roadY(r, a1));
         if (ym < 1.2) continue;
         for (const sd of [-1, 1]) {
           const ox = -(z1 - z0) / Ls * (hw + 0.25) * sd, oz = (x1 - x0) / Ls * (hw + 0.25) * sd;
@@ -196,6 +200,51 @@ export class World {
           const yy = osm.roadY(r, a0 + t);
           if (yy > 2) boxes.boxW(x0 + (x1 - x0) * t / Ls, z0 + (z1 - z0) * t / Ls, 1.8, hw * 1.3, 0, yy - 1.3, yaw, DECK, ST.plain);
         }
+      }
+    }
+  }
+  // a road below grade: an open trench with retaining walls, then (for tunnels) a portal and a lit, covered tube
+  sunken(r, pts, hw, covered, boxes, holes) {
+    const osm = this.osm;
+    const COVER = 6.0;   // depth at which the roof closes over the road
+    let prevClosed = null;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, z0, a0] = pts[i], [x1, z1, a1] = pts[i + 1];
+      const Ls = Math.hypot(x1 - x0, z1 - z0); if (Ls < 0.3) continue;
+      const ux = (x1 - x0) / Ls, uz = (z1 - z0) / Ls, nx = -uz, nz = ux;
+      const yaw = Math.atan2(-uz, ux);
+      // split long segments so walls follow the slope
+      const parts = Math.max(1, Math.ceil(Ls / 10));
+      for (let k = 0; k < parts; k++) {
+        const t0 = (k / parts) * Ls, t1 = ((k + 1) / parts) * Ls, sl = t1 - t0;
+        const ya = osm.roadY(r, a0 + t0), yb = osm.roadY(r, a0 + t1);
+        const lo = Math.min(ya, yb), depth = -(ya + yb) / 2;
+        if (depth < 0.3) { prevClosed = false; continue; }
+        const mx = x0 + ux * (t0 + t1) / 2, mz = z0 + uz * (t0 + t1) / 2;
+        const closed = covered && depth >= COVER;
+        for (const sd of [-1, 1]) {
+          const ox = nx * (hw + 0.45) * sd, oz = nz * (hw + 0.45) * sd;
+          if (closed) boxes.boxW(mx + ox, mz + oz, sl + 0.1, 0.9, lo - 0.3, 6.3 + 0.3, yaw, TUNNEL_WALL, ST.plain);
+          else boxes.boxW(mx + ox, mz + oz, sl + 0.1, 0.9, lo - 0.3, -lo + 1.2, yaw, CONCRETE, ST.plain);   // retaining wall + parapet
+        }
+        if (closed) {
+          const ym = (ya + yb) / 2;
+          boxes.boxW(mx, mz, sl + 0.1, hw * 2 + 1.8, ym + 6.0, 0.7, yaw, TUNNEL_WALL, ST.plain);   // roof
+          if (k % 2 === 0) for (const sd of [-0.5, 0.5]) boxes.boxW(mx + nx * hw * sd, mz + nz * hw * sd, 2.4, 0.5, ym + 5.75, 0.25, yaw, TUNNEL_LAMP, ST.tunnelLamp);
+        } else {
+          // the opening in the ground over the trench
+          const w = hw + 0.95, ax = x0 + ux * t0, az = z0 + uz * t0, bx = x0 + ux * t1, bz = z0 + uz * t1;
+          const base = holes.count;
+          holes.vert({ position: [ax - nx * w, 0.0, az - nz * w] }); holes.vert({ position: [ax + nx * w, 0.0, az + nz * w] });
+          holes.vert({ position: [bx - nx * w, 0.0, bz - nz * w] }); holes.vert({ position: [bx + nx * w, 0.0, bz + nz * w] });
+          holes.tri(base, base + 1, base + 2); holes.tri(base + 1, base + 3, base + 2);
+        }
+        // portal: a concrete header above the tunnel mouth where the roof begins or ends
+        if (prevClosed !== null && closed !== prevClosed) {
+          const px = x0 + ux * t0, pz = z0 + uz * t0, y = ya;
+          boxes.boxW(px, pz, 1.2, hw * 2 + 2.6, y + 5.9, -(y + 5.9) + 0.9, yaw, CONCRETE, ST.plain);
+        }
+        prevClosed = closed;
       }
     }
   }
