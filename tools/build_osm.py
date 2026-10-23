@@ -122,7 +122,8 @@ CLS = {'motorway': 0, 'trunk': 1, 'primary': 2, 'secondary': 3, 'tertiary': 4, '
 WIDTH = {0: (11.5, 22), 1: (11, 21), 2: (10.5, 16), 3: (9, 14), 4: (7.5, 12), 5: (7, 9), 6: (7.5, 10), 7: (6, 7), 8: (4.5, 5.5),
          9: (6.5, 9), 10: (6.5, 9), 11: (6, 8)}
 roads = []
-DRIVE_CLS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}
+# the routing graph covers every street a car or a walker may use; each router keeps only its own classes
+ROUTE_CLS = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
 route_raw = []    # (road index, raw OSM nodes in driving order, simplified points) for the routing graph
 prof = []         # (road index, deck/floor height, first point, last point)
 road_lines = []   # for the fill rasteriser: (pts, width, cls)
@@ -175,7 +176,7 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
             prof.append((len(roads), -7.0 * max(1, min(3, -layer if layer < 0 else 1)), p[0], p[-1]))
         elif t.get('cutting') in ('yes', 'both', 'left', 'right') or (layer < 0):
             prof.append((len(roads), -6.5, p[0], p[-1]))
-        if cls in DRIVE_CLS:
+        if cls in ROUTE_CLS:
             raw = [tuple(q) for q in ln]
             route_raw.append((len(roads), raw[::-1] if rev else raw, p))
         roads.append((cls | flags << 8 | min(lanes, 15) << 16 | int(width * 10 / 2) << 24, (0xFFFF if nid == 0xFFFFFFFF else nid) | maxspeed << 16, s, n))

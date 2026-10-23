@@ -56,83 +56,116 @@ const POI_KIND = { mall: ['مول', 'shop'], market: ['سوق شعبي', 'shop']
 const DRIVE = new Set([RC.motorway, RC.trunk, RC.primary, RC.secondary, RC.tertiary, RC.unclassified, RC.residential, RC.living, RC.mlink, RC.link]);
 
 // ---------------------------------------------------------------- routing over the road graph (A*)
+// Two networks share one graph: cars keep to drivable classes and one-way rules; walkers skip motorways,
+// their ramps and road tunnels, may go both ways, and take a trunk road only when nothing else gets there.
+const WALK_NO = new Set([RC.motorway, RC.mlink]);
 class Router {
-  constructor(osm) {
-    this.osm = osm;
+  constructor(osm, mode = 'car') {
+    this.osm = osm; this.mode = mode;
     const s = osm.s;
     this.ok = !!(s.rNodes && s.rEdges);
     if (!this.ok) return;
+    const car = mode === 'car';
+    const allowed = (r) => (car ? DRIVE.has(osm.cls(r)) : !WALK_NO.has(osm.cls(r)) && !(osm.flags(r) & F.tunnel));
+    this.oneway = (r) => car && !!(osm.flags(r) & F.oneway);
+    this.allowed = allowed;
     const N = s.rNodes.length / 2, E = s.rEdges.length / 3;
     this.N = N;
-    // CSR adjacency, both directions unless one-way
+    // CSR adjacency over the allowed edges, both directions unless one-way
     const deg = new Uint32Array(N + 1);
     for (let e = 0; e < E; e++) {
       const u = s.rEdges[e * 3], v = s.rEdges[e * 3 + 1], r = s.rEdges[e * 3 + 2];
-      deg[u]++; if (!(osm.flags(r) & F.oneway)) deg[v]++;
+      if (!allowed(r)) continue;
+      deg[u]++; if (!this.oneway(r)) deg[v]++;
     }
     const off = new Uint32Array(N + 1);
     for (let i = 0; i < N; i++) off[i + 1] = off[i] + deg[i];
     const to = new Uint32Array(off[N]), edge = new Int32Array(off[N]), fill = off.slice(0, N);
     for (let e = 0; e < E; e++) {
       const u = s.rEdges[e * 3], v = s.rEdges[e * 3 + 1], r = s.rEdges[e * 3 + 2];
-      to[fill[u]] = v; edge[fill[u]++] = e + 1;                                         // +e: forward along the way
-      if (!(osm.flags(r) & F.oneway)) { to[fill[v]] = u; edge[fill[v]++] = -(e + 1); }   // -e: against it
+      if (!allowed(r)) continue;
+      to[fill[u]] = v; edge[fill[u]++] = e + 1;                                  // +e: forward along the way
+      if (!this.oneway(r)) { to[fill[v]] = u; edge[fill[v]++] = -(e + 1); }      // -e: against it
     }
     Object.assign(this, { off, to, edge });
+    // connected pieces of this network: a street on a small island (a path inside a walled district, a stub of
+    // two nodes beside a tower) cannot lead anywhere, so routes never start or end on one if there is a choice
+    const parent = new Int32Array(N); for (let i = 0; i < N; i++) parent[i] = i;
+    const root = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (let e = 0; e < E; e++) { const r = s.rEdges[e * 3 + 2]; if (!allowed(r)) continue; const a = root(s.rEdges[e * 3]), b = root(s.rEdges[e * 3 + 1]); if (a !== b) parent[a] = b; }
+    const size = new Uint32Array(N); for (let i = 0; i < N; i++) size[root(i)]++;
+    this.pieceSize = (node) => size[root(node)];
     // edges of each way, to find where a position sits
     this.byRoad = new Map();
-    for (let e = 0; e < E; e++) { const r = s.rEdges[e * 3 + 2]; let l = this.byRoad.get(r); if (!l) this.byRoad.set(r, (l = [])); l.push(e); }
+    for (let e = 0; e < E; e++) { const r = s.rEdges[e * 3 + 2]; if (!allowed(r)) continue; let l = this.byRoad.get(r); if (!l) this.byRoad.set(r, (l = [])); l.push(e); }
   }
-  // where a point meets the network: the edge it lies on and the distance along its way
-  attach(x, z) {
-    const osm = this.osm;
-    const hit = osm.nearestRoad(x, z, 150, (r) => DRIVE.has(osm.cls(r)) && this.byRoad.has(r)) || osm.nearestRoad(x, z, 600, (r) => DRIVE.has(osm.cls(r)) && this.byRoad.has(r));
-    if (!hit) return null;
-    const A = osm.s.rAlong;
-    for (const e of this.byRoad.get(hit.road)) {
-      const a0 = A[e * 2], a1 = A[e * 2 + 1];
-      if (hit.along >= Math.min(a0, a1) - 0.5 && hit.along <= Math.max(a0, a1) + 0.5) return { e, r: hit.road, along: hit.along, x: hit.x, z: hit.z };
+  // every place a point can join the network: the nearest few streets, each with its edge and distance along the way.
+  // A street next to a landmark can be a dead end of two nodes, so one candidate is never enough.
+  candidates(x, z, k = 8) {
+    const osm = this.osm, s = osm.s, A = s.rAlong, out = [], seen = new Set();
+    for (const [R, minPiece] of [[250, 500], [900, 500], [900, 1]]) {
+      while (out.length < k) {
+        const hit = osm.nearestRoad(x, z, R, (r) => !seen.has(r) && this.byRoad.has(r) && this.pieceSize(s.rEdges[this.byRoad.get(r)[0] * 3]) >= minPiece);
+        if (!hit) break;
+        seen.add(hit.road);
+        for (const e of this.byRoad.get(hit.road)) {
+          const a0 = A[e * 2], a1 = A[e * 2 + 1];
+          if (hit.along >= Math.min(a0, a1) - 0.5 && hit.along <= Math.max(a0, a1) + 0.5) { out.push({ e, r: hit.road, along: hit.along, x: hit.x, z: hit.z, off: Math.max(0, hit.dist) }); break; }
+        }
+      }
+      if (out.length) break;
     }
-    return null;
+    return out;
   }
   edgeLen(e) { const A = this.osm.s.rAlong; return Math.abs(A[e * 2 + 1] - A[e * 2]); }
   route(x0, z0, x1, z1) {
     if (!this.ok) return null;
-    const a = this.attach(x0, z0), b = this.attach(x1, z1);
-    if (!a || !b) return null;
-    const s = this.osm.s, A = s.rAlong, NP = s.rNodes;
-    if (a.e === b.e && (b.along >= a.along || !(this.osm.flags(a.r) & F.oneway))) return { pieces: [[a.r, a.along, b.along]], end: b };
-    const N = this.N, g = new Float64Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), via = new Int32Array(N);
+    const S = this.candidates(x0, z0), T = this.candidates(x1, z1);
+    if (!S.length || !T.length) return null;
+    const s = this.osm.s, A = s.rAlong, NP = s.rNodes, OFF = 2;   // metres off the road count double
+    let best = Infinity, bestN = -1, bestT = null, direct = null;
+    // start and goal on the same edge, in a direction the street allows
+    for (const a of S) for (const b of T) if (a.e === b.e && (b.along >= a.along || !this.oneway(a.r))) {
+      const c = Math.abs(b.along - a.along) + (a.off + b.off) * OFF;
+      if (c < best) { best = c; direct = [a, b]; }
+    }
+    const N = this.N, g = new Float64Array(N).fill(Infinity), from = new Int32Array(N).fill(-1), via = new Int32Array(N), startOf = new Int32Array(N).fill(-1);
     const heap = [], push = (n, f) => { heap.push([f, n]); let i = heap.length - 1; while (i) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
     const h = (n) => Math.hypot(NP[n * 2] - x1, NP[n * 2 + 1] - z1);
-    // start: both ends of the start edge (only forwards on one-way roads)
-    const ua = s.rEdges[a.e * 3], va = s.rEdges[a.e * 3 + 1], a0 = A[a.e * 2], a1 = A[a.e * 2 + 1];
-    const startCost = [[va, Math.abs(a1 - a.along), 1]];
-    if (!(this.osm.flags(a.r) & F.oneway)) startCost.push([ua, Math.abs(a.along - a0), -1]);
-    for (const [n, c] of startCost) { if (c < g[n]) { g[n] = c; from[n] = -2; push(n, c + h(n)); } }
-    // goal: either end of the goal edge, plus the remaining piece
-    const ub = s.rEdges[b.e * 3], vb = s.rEdges[b.e * 3 + 1], b0 = A[b.e * 2], b1 = A[b.e * 2 + 1];
-    const goal = new Map([[ub, Math.abs(b.along - b0)]]);
-    if (!(this.osm.flags(b.r) & F.oneway)) goal.set(vb, Math.abs(b1 - b.along));
-    let best = Infinity, bestN = -1, it = 0;
-    while (heap.length && it++ < 400000) {
+    // every start candidate seeds the search from the ends of its edge (forwards only on one-way streets)
+    S.forEach((a, ai) => {
+      const ua = s.rEdges[a.e * 3], va = s.rEdges[a.e * 3 + 1], a0 = A[a.e * 2], a1 = A[a.e * 2 + 1];
+      const seeds = [[va, Math.abs(a1 - a.along)]];
+      if (!this.oneway(a.r)) seeds.push([ua, Math.abs(a.along - a0)]);
+      for (const [n, c0] of seeds) { const c = c0 + a.off * OFF; if (c < g[n]) { g[n] = c; from[n] = -2; startOf[n] = ai; push(n, c + h(n)); } }
+    });
+    // every goal candidate can be reached from the ends of its edge, plus the last piece
+    const goal = new Map();
+    T.forEach((b) => {
+      const ub = s.rEdges[b.e * 3], vb = s.rEdges[b.e * 3 + 1], b0 = A[b.e * 2], b1 = A[b.e * 2 + 1];
+      const ends = [[ub, Math.abs(b.along - b0), b0]];
+      if (!this.oneway(b.r)) ends.push([vb, Math.abs(b1 - b.along), b1]);
+      for (const [n, c0, endAlong] of ends) { const c = c0 + b.off * OFF; if (!goal.has(n) || goal.get(n).c > c) goal.set(n, { c, b, endAlong }); }
+    });
+    const car = this.mode === 'car';
+    let it = 0;
+    while (heap.length && it++ < 600000) {
       const [f, n] = pop();
       if (f >= best) break;
-      if (goal.has(n) && g[n] + goal.get(n) < best) { best = g[n] + goal.get(n); bestN = n; }
+      const gl = goal.get(n);
+      if (gl && g[n] + gl.c < best) { best = g[n] + gl.c; bestN = n; bestT = gl; direct = null; }
       for (let k = this.off[n]; k < this.off[n + 1]; k++) {
         const m = this.to[k], e = Math.abs(this.edge[k]) - 1;
-        // highways are preferred a little, as a driver would
-        const c = this.osm.cls(s.rEdges[e * 3 + 2]), w = c <= RC.trunk ? 0.8 : c <= RC.secondary ? 0.9 : 1;
+        // drivers lean towards the big roads; walkers take the shortest way that keeps off trunk roads
+        const c = this.osm.cls(s.rEdges[e * 3 + 2]), w = !car ? (c === RC.trunk ? 2.5 : 1) : c <= RC.trunk ? 0.8 : c <= RC.secondary ? 0.9 : 1;
         const ng = g[n] + this.edgeLen(e) * w;
-        if (ng < g[m]) { g[m] = ng; from[m] = n; via[m] = this.edge[k]; push(m, ng + h(m) * 0.8); }
+        if (ng < g[m]) { g[m] = ng; from[m] = n; via[m] = this.edge[k]; startOf[m] = startOf[n]; push(m, ng + h(m) * 0.8); }
       }
     }
+    if (direct) return { pieces: [[direct[0].r, direct[0].along, direct[1].along]], end: direct[1] };
     if (bestN < 0) return null;
-    // walk back
-    const pieces = [];
-    const endAlong = bestN === ub ? b0 : b1;
-    pieces.push([b.r, endAlong, b.along]);
+    const pieces = [[bestT.b.r, bestT.endAlong, bestT.b.along]];
     let n = bestN;
     while (from[n] >= 0) {
       const sgn = via[n] > 0 ? 1 : -1, e = Math.abs(via[n]) - 1;
@@ -140,9 +173,10 @@ class Router {
       pieces.push(sgn > 0 ? [r, e0, e1] : [r, e1, e0]);
       n = from[n];
     }
-    pieces.push(n === va ? [a.r, a.along, a1] : [a.r, a.along, a0]);
+    const a = S[startOf[n]], ua = s.rEdges[a.e * 3];
+    pieces.push([a.r, a.along, n === ua ? A[a.e * 2] : A[a.e * 2 + 1]]);
     pieces.reverse();
-    return { pieces, end: b };
+    return { pieces, end: bestT.b };
   }
 }
 
@@ -340,11 +374,20 @@ export class Guide {
     }
     if (this.dest === g && this.player.mode !== 'heli') this.reroute();
   }
-  clear() { this.dest = null; this.route = null; this.offline = false; this.build([]); this.nav.hidden = true; }
+  clear() { this.dest = null; this.route = null; this.offline = false; this.noRoute = false; this.routeMode = null; this.build([]); this.nav.hidden = true; }
+  // walkers and drivers get different networks; the walking one is built the first time it is needed
+  routerFor(mode) {
+    if (!this.router) return null;
+    if (mode === 'car') return this.router;
+    this.walkRouter ??= new Router(this.osm, 'walk');
+    return this.walkRouter;
+  }
   reroute() {
     if (!this.router || !this.dest) return;
-    const p = this.player.pos, g = this.dest;
-    const r = this.router.route(p.x, p.z, g.x, g.z);
+    const p = this.player.pos, g = this.dest, mode = this.player.mode === 'person' ? 'walk' : 'car';
+    const r = this.routerFor(mode).route(p.x, p.z, g.x, g.z);
+    this.routeMode = mode;
+    this.noRoute = !r;   // the arrow then points straight at the place, and the banner says so
     this.route = null;
     if (r) {
       const pts = [];
@@ -452,7 +495,8 @@ export class Guide {
     const g = this.dest, left = Math.hypot(g.x - p.x, g.z - p.z);
     if (left < (g.h > 150 ? 220 : 140)) { if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc); this.seen.set(g.key, performance.now()); this.clear(); return; }
     let tx = g.x, tz = g.z, remain = left;
-    const R = this.route;
+    const R = this.route, mode = this.player.mode === 'person' ? 'walk' : this.player.mode === 'car' ? 'car' : null;
+    if (mode && this.router && this.routeMode && mode !== this.routeMode && performance.now() - this.lastReroute > 1000) { this.reroute(); return; }
     if (R && this.player.mode !== 'heli') {
       // follow progress along the route; reroute when far from it
       let bi = R.idx, bd = Infinity;
@@ -462,11 +506,14 @@ export class Guide {
       let j = bi; while (j < R.pts.length - 1 && R.acc[j] - R.acc[bi] < 45) j++;
       tx = R.pts[j][0]; tz = R.pts[j][1];
       remain = R.acc[R.acc.length - 1] - R.acc[bi] + Math.sqrt(bd);
-    } else if (!R && this.player.mode !== 'heli' && performance.now() - (this.lastReroute || 0) > 3000) { this.reroute(); }
+    } else if (!R && this.player.mode !== 'heli' && performance.now() - (this.lastReroute || 0) > (this.noRoute ? 8000 : 3000)) { this.reroute(); }
     const camYaw = Math.atan2(-fwd.z, fwd.x), to = Math.atan2(-(tz - p.z), tx - p.x);
     const rel = Math.atan2(Math.sin(camYaw - to), Math.cos(camYaw - to));
     this.nav.querySelector('svg').style.transform = `rotate(${rel * 180 / Math.PI}deg)`;
     const speed = this.player.mode === 'heli' ? 50 : this.player.mode === 'car' ? 14 : 1.4;
-    if (!this.offline) this.nav.querySelector('span').textContent = `${fmtDist(remain)} · نحو ${Math.max(1, Math.round(remain / speed / 60))} د`;
+    // no time estimate without a real route: a straight line says nothing about the drive
+    if (!this.offline) this.nav.querySelector('span').textContent = this.noRoute && this.player.mode !== 'heli'
+      ? `${fmtDist(remain)} خط مستقيم · لا يوجد طريق معروف إلى هنا`
+      : `${fmtDist(remain)} · نحو ${Math.max(1, Math.round(remain / speed / 60))} د${mode === 'walk' ? ' مشياً' : ''}`;
   }
 }

@@ -102,6 +102,37 @@ await test('the road network recovers after a failed first load', async () => {
   await close();
 });
 
+await test('every landmark can be reached by car and on foot, and walking keeps off motorways', async () => {
+  const { page } = await open({ width: 640, height: 400 });
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const G = __riyadh.guide, o = __riyadh.osm, p = __riyadh.player.pos;
+    await G.ensureRouter();
+    const out = { car: [], walk: [], motorway: [] };
+    for (const mode of ['car', 'walk']) for (const g of G.pins.map((q) => q.g)) {
+      const route = G.routerFor(mode).route(p.x, p.z, g.x, g.z);
+      if (!route) { out[mode].push(g.key); continue; }
+      if (mode === 'walk' && route.pieces.some(([road]) => o.cls(road) === 0 || o.cls(road) === 9)) out.motorway.push(g.key);
+    }
+    return out;
+  });
+  assert(!r.car.length, 'no car route to ' + r.car.join(', '));
+  assert(!r.walk.length, 'no walking route to ' + r.walk.join(', '));
+  assert(!r.motorway.length, 'walking routes on motorways to ' + r.motorway.join(', '));
+});
+
+await test('guidance switches network with the travel mode, and says so when there is no road', async () => {
+  const { page } = await open({ width: 640, height: 400 });
+  await ready(page);
+  await page.evaluate(() => { const g = __riyadh.guide; return g.go(g.pins.find((p) => p.g.key === 'museum').g); });
+  await page.waitForFunction(() => __riyadh.guide.routeMode === 'car' && __riyadh.guide.route, null, { timeout: 60000 });
+  await page.evaluate(() => __riyadh.setMode('person'));
+  await page.waitForFunction(() => __riyadh.guide.routeMode === 'walk', null, { timeout: 30000 });
+  // a spot far out in the desert, beyond every street
+  await page.evaluate(() => __riyadh.guide.go({ key: 'spot', ar: 'الصحراء', en: 'Desert', x: 60000, z: 60000, h: 10, desc: '' }));
+  await page.waitForFunction(() => /لا يوجد طريق/.test(document.querySelector('#guide-nav span').textContent), null, { timeout: 30000 });
+});
+
 for (const [w, h] of [[390, 667], [844, 390], [360, 640]]) {
   await test(`guide, tour and tourist panels fit a ${w}x${h} screen`, async () => {
     const { page, close } = await open({ width: w, height: h, mobile: true });
