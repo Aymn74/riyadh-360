@@ -122,7 +122,33 @@ export const PLACES = {
   turaif: { lat: 24.7329, lon: 46.57328, ar: 'حي الطريف · الدرعية', en: 'At-Turaif, Diriyah' },
   tahlia: { lat: 24.6985, lon: 46.6880, ar: 'شارع التحلية', en: 'Tahlia Street' },
   malazPark: { lat: 24.66665, lon: 46.73705, ar: 'منتزه الملك عبدالله', en: 'King Abdullah Park' },
-  salam: { lat: 24.62185, lon: 46.70832, ar: 'حديقة السلام', en: 'Salam Park' }
+  salam: { lat: 24.62185, lon: 46.70832, ar: 'حديقة السلام', en: 'Salam Park' },
+  // more landmarks, positions from OpenStreetMap
+  zal: { lat: 24.62897, lon: 46.71224, ar: 'سوق الزل', en: 'Souq Al-Zal' },
+  thumairi: { lat: 24.6311, lon: 46.71551, ar: 'دروازة الثميري وسوقها', en: 'Al-Thumairi Gate & Souq' },
+  hokm: { lat: 24.62874, lon: 46.716, ar: 'قصر الحكم', en: 'Qasr Al-Hokm' },
+  turkiMosque: { lat: 24.63092, lon: 46.7108, ar: 'جامع الإمام تركي بن عبدالله', en: 'Imam Turki bin Abdullah Grand Mosque' },
+  murabba: { lat: 24.64652, lon: 46.70925, ar: 'قصر المربع', en: 'Murabba Palace' },
+  redPalace: { lat: 24.64242, lon: 46.70913, ar: 'القصر الأحمر', en: 'The Red Palace' },
+  ksu: { lat: 24.71968, lon: 46.62871, ar: 'جامعة الملك سعود', en: 'King Saud University' },
+  pnu: { lat: 24.85232, lon: 46.71972, ar: 'جامعة الأميرة نورة', en: 'Princess Nourah University' },
+  imamU: { lat: 24.81557, lon: 46.70416, ar: 'جامعة الإمام محمد بن سعود', en: 'Imam Mohammad Ibn Saud University' },
+  rajhiMosque: { lat: 24.68016, lon: 46.77931, ar: 'جامع الراجحي', en: 'Al Rajhi Grand Mosque' },
+  boulevard: { lat: 24.76794, lon: 46.60426, ar: 'بوليفارد رياض سيتي', en: 'Boulevard Riyadh City' },
+  blvdWorld: { lat: 24.77664, lon: 46.60124, ar: 'عالم البوليفارد', en: 'Boulevard World' },
+  bujairi: { lat: 24.73643, lon: 46.57522, ar: 'مطل البجيري', en: 'Al-Bujairi Terrace' },
+  stadium: { lat: 24.78861, lon: 46.83917, ar: 'استاد الملك فهد الدولي', en: 'King Fahd International Stadium' },
+  zoo: { lat: 24.67638, lon: 46.73711, ar: 'حديقة الحيوان بالملز', en: 'Riyadh Zoo' },
+  dq: { lat: 24.67904, lon: 46.61974, ar: 'الحي الدبلوماسي', en: 'Diplomatic Quarter' },
+  aviation: { lat: 24.75451, lon: 46.74013, ar: 'متحف صقر الجزيرة للطيران', en: 'Saqr Al-Jazira Aviation Museum' },
+  wadiHanifa: { lat: 24.61304, lon: 46.69386, ar: 'وادي حنيفة', en: 'Wadi Hanifa' },
+  roshnFront: { lat: 24.84126, lon: 46.73319, ar: 'واجهة روشن', en: 'Roshn Front' },
+  riyadhPark: { lat: 24.75596, lon: 46.63009, ar: 'الرياض بارك', en: 'Riyadh Park Mall' },
+  nakheelMall: { lat: 24.76703, lon: 46.71576, ar: 'النخيل مول', en: 'Al Nakheel Mall' },
+  riyadhGallery: { lat: 24.74382, lon: 46.65823, ar: 'الرياض جاليري', en: 'Riyadh Gallery' },
+  granada: { lat: 24.78181, lon: 46.7308, ar: 'غرناطة مول', en: 'Granada Mall' },
+  panorama: { lat: 24.6925, lon: 46.66942, ar: 'بانوراما مول', en: 'Panorama Mall' },
+  taiba: { lat: 24.73495, lon: 46.66271, ar: 'سوق طيبة', en: 'Souq Taiba' }
 };
 for (const p of Object.values(PLACES)) Object.assign(p, geo(p.lat, p.lon), gridOf(p.lat, p.lon));
 

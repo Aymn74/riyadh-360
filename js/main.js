@@ -896,13 +896,15 @@ async function boot() {
     // the narrator speaks the guide's notes, in the tour's language
     const narrate = (g, arrived) => {
       if (arrived || (tourist && Math.hypot(player.pos.x - tourist.spawn.x, player.pos.z - tourist.spawn.z) > 150)) tourist?.stamp(g.key);   // not for the spot the visitor starts on
-      const story = tour.storyFor(g.key) || (tour.lang === 'ar' ? g.desc : '');
+      const story = tour.storyFor(g.key) || (tour.lang === 'ar' ? g.desc : g.descEn) || '';
       const name = tour.lang === 'ar' ? g.ar : g.en;
       guide.note((arrived ? ARRIVED[tour.lang] : '') + name, story || g.desc, story ? tour.dir : 'rtl');
       tour.speakFree((arrived ? ARRIVED[tour.lang] : '') + name + '. ' + story, true);
     };
     guide = new Guide({ scene, camera, osm, player, startTour, teleport: (key) => {
-      const t = TELEPORTS.find((q) => q.id === key) || (() => { const g = G.PLACES[key]; return { id: key, at: [g.lat, g.lon], small: true }; })();
+      // a key from the guide, or a place from the map with its own coordinates
+      const g = typeof key === 'object' ? key : G.PLACES[key], id = typeof key === 'object' ? key.key : key;
+      const t = TELEPORTS.find((q) => q.id === id) || { id, at: [g.lat, g.lon], small: true };
       teleport(t);
     } });
     guide.near = narrate;

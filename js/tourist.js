@@ -111,7 +111,7 @@ export class TouristPanel {
     if (!GUIDE.find((g) => g.key === key) || this.visited.has(key)) return;
     this.visited.add(key);
     try { localStorage.setItem('riyadh-passport', JSON.stringify([...this.visited])); } catch (e) { /* private mode */ }
-    if (this.visited.size === GUIDE.length) this.guide.note('جواز الرياض مكتمل', 'زرت كل المعالم الأربعة عشر في الدليل. مبروك!');
+    if (this.visited.size === GUIDE.length) this.guide.note('جواز الرياض مكتمل', `زرت كل معالم الدليل (${AR(GUIDE.length)} معلماً). مبروك!`);
     if (!this.el.hidden && this.view === 'home') this.renderHome();
   }
   toggle(open) { const show = open ?? this.el.hidden; this.el.hidden = !show; if (show) { this.view = 'home'; this.renderHome(); } }

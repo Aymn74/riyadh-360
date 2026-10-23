@@ -1,26 +1,56 @@
 // guide.js — a tourist guide: floating landmark labels, an info card, road routing with a guidance arrow, and arrival notes.
 import * as THREE from 'three';
-import { PLACES } from './geo.js';
+import { PLACES, geo as geoOf } from './geo.js';
 import { F, RC } from './osm.js';
 
-// [key, label height above ground (m), short description]
+// [key, label height (m), category, importance (1 = must see), description, description in English]
 const SPOTS = [
-  ['kingdom', 302, 'ناطحة سحاب بارتفاع 302 م اكتملت عام 2002، ويعلو قمتها جسر زجاجي معلّق يطل على المدينة.'],
-  ['faisaliah', 267, 'أول ناطحة سحاب في المملكة، اكتملت عام 2000 بارتفاع 267 م، وتعلوها كرة زجاجية فيها مطعم.'],
-  ['kafd', 385, 'مركز الملك عبدالله المالي، وفيه برج صندوق الاستثمارات العامة، أعلى مباني الرياض بارتفاع 385 م.'],
-  ['rafal', 308, 'برج سكني بارتفاع 308 م على طريق الملك فهد شمالاً، اكتمل عام 2014.'],
-  ['masmak', 22, 'قلعة من الطين بُنيت نحو عام 1865، واسترداد الملك عبدالعزيز لها عام 1902 كان بداية توحيد المملكة.'],
-  ['museum', 24, 'افتُتح عام 1999 في مركز الملك عبدالعزيز التاريخي بالمربع، ويروي تاريخ الجزيرة العربية والمملكة.'],
-  ['water', 64, 'برج مياه الرياض بشكله المميز، من معالم السبعينيات قرب حي المربع.'],
-  ['tv', 172, 'برج التلفزيون بارتفاع 170 م، افتُتح عام 1978.'],
-  ['moi', 66, 'مقر وزارة الداخلية بتصميمه الشبيه بهرم مقلوب، من أبرز المباني المعمارية في الرياض.'],
-  ['library', 32, 'مكتبة الملك فهد الوطنية، تكسوها أشرعة من القماش مستوحاة من الخيمة العربية.'],
-  ['turaif', 26, 'عاصمة الدولة السعودية الأولى في الدرعية، ومسجّلة في قائمة التراث العالمي لليونسكو منذ 2010.'],
-  ['tahlia', 14, 'من أشهر شوارع الرياض للمقاهي والمطاعم والتسوق.'],
-  ['malazPark', 14, 'منتزه كبير في الملز يشتهر بنوافيره الراقصة.'],
-  ['salam', 14, 'من أكبر الحدائق في وسط الرياض، وفيها بحيرة واسعة.']
+  ['kingdom', 302, 'modern', 1, 'ناطحة سحاب بارتفاع 302 م اكتملت عام 2002، ويعلو قمتها جسر زجاجي معلّق يطل على المدينة.', 'A 302 m skyscraper completed in 2002, crowned by a sky bridge with views over the city.'],
+  ['masmak', 22, 'heritage', 2, 'قلعة من الطين بُنيت نحو عام 1865، واسترداد الملك عبدالعزيز لها عام 1902 كان بداية توحيد المملكة.', 'A mud-brick fort built around 1865; its capture by Abdulaziz in 1902 began the unification of the kingdom.'],
+  ['turaif', 26, 'heritage', 3, 'عاصمة الدولة السعودية الأولى في الدرعية، ومسجّلة في قائمة التراث العالمي لليونسكو منذ 2010.', 'Capital of the first Saudi state in Diriyah, a UNESCO World Heritage Site since 2010.'],
+  ['faisaliah', 267, 'modern', 4, 'أول ناطحة سحاب في المملكة، اكتملت عام 2000 بارتفاع 267 م، وتعلوها كرة زجاجية فيها مطعم.', 'Saudi Arabia\'s first skyscraper, 267 m, completed in 2000, topped by a glass globe with a restaurant.'],
+  ['museum', 24, 'culture', 5, 'افتُتح عام 1999 في مركز الملك عبدالعزيز التاريخي بالمربع، ويروي تاريخ الجزيرة العربية والمملكة.', 'Opened in 1999 in the King Abdulaziz Historical Centre; the story of Arabia and the kingdom.'],
+  ['kafd', 385, 'modern', 6, 'مركز الملك عبدالله المالي، وفيه برج صندوق الاستثمارات العامة، أعلى مباني الرياض بارتفاع 385 م.', 'The King Abdullah Financial District, home of the 385 m PIF Tower, Riyadh\'s tallest building.'],
+  ['zal', 12, 'shop', 7, 'من أقدم أسواق الرياض الشعبية، في الديرة قرب المصمك، يشتهر بالمشالح والسجاد والبخور والعطور، وفيه حراج للأغراض القديمة.', 'One of Riyadh\'s oldest traditional markets, near Masmak, known for bishts, carpets, incense and perfume, with an auction for old goods.'],
+  ['murabba', 16, 'heritage', 8, 'قصر من الطين بناه الملك عبدالعزيز أواخر الثلاثينيات خارج أسوار الرياض القديمة، وكان مقراً لحكمه وسكنه، وهو اليوم متحف.', 'A mud-brick palace built by King Abdulaziz in the late 1930s outside the old walls; his home and seat of government, now a museum.'],
+  ['hokm', 22, 'heritage', 9, 'مقر الحكم التاريخي في قلب الرياض القديمة، أعيد بناؤه ضمن مشروع تطوير منطقة قصر الحكم، وتحيط به الساحات والأسواق.', 'The historic seat of government in old Riyadh, rebuilt in the Qasr Al-Hokm district project, ringed by squares and markets.'],
+  ['turkiMosque', 50, 'faith', 10, 'الجامع الكبير في قلب الرياض بجوار قصر الحكم، من أبرز أمثلة العمارة النجدية الحديثة.', 'The grand mosque at the heart of Riyadh beside Qasr Al-Hokm, a landmark of modern Najdi architecture.'],
+  ['ksu', 30, 'edu', 11, 'أول جامعة في المملكة، تأسست عام 1957، وحرمها الرئيسي من أكبر الحرم الجامعية في المنطقة.', 'Saudi Arabia\'s first university, founded in 1957; its main campus is one of the largest in the region.'],
+  ['boulevard', 30, 'leisure', 12, 'منطقة ترفيه ومطاعم ومسارح، من أبرز وجهات موسم الرياض، وتضج بالحياة في المساء.', 'An entertainment district of restaurants, theatres and shows, a highlight of Riyadh Season, busiest at night.'],
+  ['bujairi', 14, 'food', 13, 'مطاعم ومقاهٍ على ضفة وادي حنيفة في الدرعية، تطل على قصور الطريف.', 'Restaurants and cafés on the bank of Wadi Hanifa in Diriyah, facing the palaces of At-Turaif.'],
+  ['rafal', 308, 'modern', 14, 'برج سكني بارتفاع 308 م على طريق الملك فهد شمالاً، اكتمل عام 2014.', 'A 308 m residential tower on King Fahd Road in the north, completed in 2014.'],
+  ['tahlia', 14, 'food', 15, 'من أشهر شوارع الرياض للمقاهي والمطاعم والتسوق.', 'One of Riyadh\'s best-known streets for cafés, restaurants and shopping.'],
+  ['library', 32, 'culture', 16, 'مكتبة الملك فهد الوطنية، تكسوها أشرعة من القماش مستوحاة من الخيمة العربية.', 'King Fahd National Library, wrapped in fabric sails inspired by the Arabian tent.'],
+  ['wadiHanifa', 12, 'leisure', 17, 'وادٍ يشق غرب الرياض وجنوبها، أعيد تأهيله بمتنزهات ومسارات مشي على ضفافه.', 'A valley through west and south Riyadh, restored with parks and walking trails along its banks.'],
+  ['thumairi', 14, 'heritage', 18, 'إحدى بوابات سور الرياض القديم، وحولها سوق الثميري للتحف والسجاد والهدايا التقليدية.', 'A gate of old walled Riyadh, with the Thumairi market for antiques, carpets and traditional gifts.'],
+  ['water', 64, 'modern', 19, 'برج مياه الرياض بشكله المميز، من معالم السبعينيات قرب حي المربع.', 'The Riyadh Water Tower, a distinctive 1970s landmark near Al Murabba.'],
+  ['salam', 14, 'leisure', 20, 'من أكبر الحدائق في وسط الرياض، وفيها بحيرة واسعة.', 'One of the largest parks in central Riyadh, with a wide lake.'],
+  ['redPalace', 16, 'heritage', 21, 'قصر بُني في الأربعينيات للأمير سعود بن عبدالعزيز حين كان ولياً للعهد، وسُمّي بلونه الأحمر، ثم صار مقراً حكومياً قبل أن يصبح متحفاً.', 'A palace built in the 1940s for Crown Prince Saud, named for its red colour, later a government seat and now a museum.'],
+  ['pnu', 30, 'edu', 22, 'أكبر جامعة للنساء في العالم، بحرم واسع في شمال الرياض يخدمه قطار داخلي خاص.', 'The largest women\'s university in the world, a vast campus in north Riyadh with its own automated train.'],
+  ['rajhiMosque', 45, 'faith', 23, 'من أكبر جوامع الرياض، في شرق المدينة.', 'One of the largest mosques in Riyadh, in the east of the city.'],
+  ['tv', 172, 'modern', 24, 'برج التلفزيون بارتفاع 170 م، افتُتح عام 1978.', 'The 170 m TV Tower, opened in 1978.'],
+  ['blvdWorld', 30, 'leisure', 25, 'منطقة ترفيه تمثل ثقافات العالم بمبانيها وأطعمتها، ضمن موسم الرياض.', 'An entertainment zone with pavilions, food and shows from cultures around the world, part of Riyadh Season.'],
+  ['stadium', 50, 'leisure', 26, 'أكبر ملاعب الرياض، بسقفه الأبيض الشبيه بالخيام، افتُتح عام 1987.', 'Riyadh\'s largest stadium, with a white tent-like roof, opened in 1987.'],
+  ['moi', 66, 'modern', 27, 'مقر وزارة الداخلية بتصميمه الشبيه بهرم مقلوب، من أبرز المباني المعمارية في الرياض.', 'The Ministry of Interior, shaped like an upside-down pyramid, one of Riyadh\'s most striking buildings.'],
+  ['malazPark', 14, 'leisure', 28, 'منتزه كبير في الملز يشتهر بنوافيره الراقصة.', 'A large park in Al Malaz known for its dancing fountains.'],
+  ['zoo', 12, 'leisure', 29, 'حديقة حيوان الرياض في حي الملز، مقصد للعائلات.', 'The Riyadh Zoo in Al Malaz, a family favourite.'],
+  ['dq', 14, 'leisure', 30, 'حي السفارات غرب الرياض، بحدائقه ومسارات المشي المطلة على وادي حنيفة.', 'The embassy district in west Riyadh, with gardens and trails above Wadi Hanifa.'],
+  ['aviation', 16, 'culture', 31, 'متحف للطيران يعرض طائرات حربية ومدنية وتاريخ القوات الجوية السعودية.', 'An aviation museum of military and civil aircraft and the history of the Royal Saudi Air Force.'],
+  ['imamU', 30, 'edu', 32, 'من أكبر جامعات المملكة، في شمال الرياض.', 'One of the largest universities in Saudi Arabia, in north Riyadh.'],
+  ['riyadhPark', 20, 'shop', 33, 'من أكبر مراكز التسوق في الرياض، فيه متاجر ومطاعم وسينما.', 'One of Riyadh\'s largest malls, with shops, restaurants and a cinema.'],
+  ['nakheelMall', 20, 'shop', 34, 'مركز تسوق كبير فيه متاجر ومطاعم وسينما.', 'A large mall with shops, restaurants and a cinema.'],
+  ['riyadhGallery', 20, 'shop', 35, 'مركز تسوق على طريق الملك فهد فيه متاجر ومطاعم وسينما.', 'A mall on King Fahd Road with shops, restaurants and a cinema.'],
+  ['granada', 20, 'shop', 36, 'مركز تسوق في شرق الرياض فيه متاجر ومطاعم وسينما.', 'A mall in east Riyadh with shops, restaurants and a cinema.'],
+  ['roshnFront', 20, 'shop', 37, 'وجهة للتسوق والمطاعم والترفيه في شمال الرياض.', 'A shopping, dining and leisure destination in north Riyadh.'],
+  ['panorama', 20, 'shop', 38, 'مركز تسوق معروف في وسط الرياض.', 'A well-known mall in central Riyadh.'],
+  ['taiba', 12, 'shop', 39, 'سوق شعبي معروف في شمال وسط الرياض.', 'A well-known traditional market in north-central Riyadh.']
 ];
-export const GUIDE = SPOTS.map(([key, h, desc]) => ({ key, h, desc, ...PLACES[key] }));
+export const GUIDE = SPOTS.map(([key, h, cat, rank, desc, descEn]) => ({ key, h, cat, rank, desc, descEn, ...PLACES[key] }));
+export const CATS = {
+  all: ['الكل', 'All'], heritage: ['تاريخ وتراث', 'Heritage'], modern: ['أبراج ومعمار', 'Skyline'], culture: ['متاحف وثقافة', 'Museums'],
+  faith: ['مساجد', 'Mosques'], edu: ['جامعات', 'Universities'], leisure: ['ترفيه وحدائق', 'Leisure'], shop: ['تسوق', 'Shopping'], food: ['مطاعم ومقاهٍ', 'Food & cafés']
+};
+const POI_KIND = { mall: ['مول', 'shop'], market: ['سوق شعبي', 'shop'], restaurant: ['مطعم', 'food'], fast: ['وجبات سريعة', 'food'], cafe: ['مقهى', 'food'] };
 
 const DRIVE = new Set([RC.motorway, RC.trunk, RC.primary, RC.secondary, RC.tertiary, RC.unclassified, RC.residential, RC.living, RC.mlink, RC.link]);
 
@@ -145,6 +175,13 @@ const CSS = `
 .g-btn { height: 38px; padding: 0 14px; border-radius: 9px; border: 0; cursor: pointer; font: 600 14px inherit; font-family: inherit; }
 .g-go { background: #1f9d63; color: #fff; } .g-tour { width: 100%; margin-top: 10px; height: 44px; font-size: 15px; } .g-alt { background: rgba(255,255,255,0.1); color: #fbf6ec; }
 .g-x { position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: #fbf6ec; font-size: 20px; cursor: pointer; }
+#guide-card .g-q { width: 100%; height: 40px; margin-top: 10px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: #fbf6ec; font: inherit; font-size: 14px; padding: 0 12px; box-sizing: border-box; }
+.g-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+.g-chip { height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: transparent; color: #fbf6ec; font: inherit; font-size: 12.5px; cursor: pointer; }
+.g-chip[aria-pressed="true"] { background: #f3d79a; color: #2a1d10; border-color: #f3d79a; }
+.g-sp { flex: 1; }
+.g-nm { display: grid; gap: 1px; min-width: 0; } .g-nm small { opacity: .6; font-size: 11.5px; }
+.g-empty { opacity: .7; font-size: 13px; padding: 8px 4px; }
 #guide-list { max-height: 50vh; overflow: auto; display: grid; gap: 4px; margin-top: 8px; }
 #guide-list button { display: flex; justify-content: space-between; gap: 10px; text-align: right; background: rgba(255,255,255,0.05); color: #fbf6ec; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; font: inherit; font-size: 14px; }
 #guide-list span { opacity: .7; font-size: 12px; direction: ltr; }
@@ -183,30 +220,78 @@ export class Guide {
     this.mesh = null;
   }
   // ---- list of all places, nearest first
-  openList() {
-    const p = this.player.pos;
-    const items = GUIDE.map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z) })).sort((a, b) => a.d - b.d);
-    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>دليل الرياض</h3><div class="en">Riyadh guide · ${GUIDE.length} places</div>
-      <button class="g-btn g-go g-tour" type="button">▶ جولة سياحية تلقائية · Guided tour</button><div id="guide-list"></div>`;
+  // ---- the guide list: search, categories, nearest or most important first; shopping and food add real places from the map
+  async loadPoi() {
+    if (this.poi) return this.poi;
+    try {
+      const d = await (await fetch(this.osm.base + 'riyadh-poi.json')).json();
+      this.poi = d.poi.map(([kind, lat, lon, name, en, cuisine]) => ({ key: 'poi', kind, lat, lon, ar: name, en: en || name, cuisine, h: 14, cat: POI_KIND[kind][1], tag: POI_KIND[kind][0], ...geoOf(lat, lon) }));
+    } catch (e) { this.poi = []; }
+    return this.poi;
+  }
+  openList(cat) {
+    if (cat) this.cat = cat;
+    this.cat = this.cat || 'all'; this.sort = this.sort || 'top'; this.q = this.q || ''; this.sub = this.sub || 'all';
+    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>دليل الرياض</h3><div class="en">Riyadh guide · ${GUIDE.length} معلماً ومئات المطاعم والمتاجر</div>
+      <button class="g-btn g-go g-tour" type="button">▶ جولة سياحية تلقائية · Guided tour</button>
+      <input id="guide-q" class="g-q" type="search" placeholder="ابحث عن معلم أو مطعم أو مول… / Search" value="${this.q.replace(/"/g, '&quot;')}" autocomplete="off">
+      <div class="g-chips" role="group" aria-label="الفئات">${Object.entries(CATS).map(([k, [ar]]) => `<button type="button" class="g-chip" data-cat="${k}" aria-pressed="${k === this.cat}">${ar}</button>`).join('')}</div>
+      <div class="g-chips g-sub" role="group" aria-label="التصفية"></div>
+      <div id="guide-list"></div>`;
     this.card.querySelector('.g-tour').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.startTour?.(); });
+    this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
+    const q = this.card.querySelector('#guide-q');
+    q.addEventListener('input', () => { this.q = q.value; this.fillList(); });
+    q.addEventListener('keydown', (e) => e.stopPropagation());   // typing must not drive the car
+    this.card.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
+      this.cat = b.dataset.cat; this.sub = 'all';
+      this.card.querySelectorAll('[data-cat]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+      this.fillList();
+    }));
+    this.listExtras?.(this.card);
+    this.card.hidden = false;
+    this.fillList();
+  }
+  async fillList() {
+    const p = this.player.pos, cat = this.cat, q = this.q.trim().toLowerCase();
+    const subs = cat === 'shop' ? { all: 'الكل', mall: 'مولات', market: 'أسواق شعبية' } : cat === 'food' ? { all: 'الكل', restaurant: 'مطاعم', fast: 'وجبات سريعة', cafe: 'مقاهٍ' } : null;
+    const subEl = this.card.querySelector('.g-sub');
+    subEl.innerHTML = `${subs ? Object.entries(subs).map(([k, t]) => `<button type="button" class="g-chip" data-sub="${k}" aria-pressed="${k === this.sub}">${t}</button>`).join('') : ''}
+      <span class="g-sp"></span><button type="button" class="g-chip" data-sort="top" aria-pressed="${this.sort === 'top'}">الأهم</button><button type="button" class="g-chip" data-sort="near" aria-pressed="${this.sort === 'near'}">الأقرب</button>`;
+    subEl.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => { this.sub = b.dataset.sub; this.fillList(); }));
+    subEl.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => { this.sort = b.dataset.sort; this.fillList(); }));
     const list = this.card.querySelector('#guide-list');
-    for (const { g, d } of items) {
+    const match = (g) => !q || (g.ar + ' ' + g.en).toLowerCase().includes(q);
+    let items = GUIDE.filter((g) => (cat === 'all' || g.cat === cat) && match(g)).map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z), tag: CATS[g.cat][0] }));
+    // real shops and restaurants: for their categories, or when searching
+    if (cat === 'shop' || cat === 'food' || (q.length > 1 && cat === 'all')) {
+      if (!this.poi) list.innerHTML = '<div class="g-empty">جارٍ تحميل المتاجر والمطاعم…</div>';
+      const poi = await this.loadPoi();
+      if (this.cat !== cat || this.q.trim().toLowerCase() !== q) return;   // the visitor moved on while it loaded
+      const extra = poi.filter((g) => (cat === 'all' || g.cat === cat) && (this.sub === 'all' || g.kind === this.sub) && match(g))
+        .map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z), tag: g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') }));
+      if (this.sub !== 'all') items = items.filter(({ g }) => (this.sub === 'market' ? /سوق/.test(g.ar) : this.sub === 'mall' ? !/سوق/.test(g.ar) : false));
+      items = items.concat(extra);
+    }
+    // "most important": the curated landmarks by rank, then the rest by distance
+    items.sort(this.sort === 'near' ? (a, b) => a.d - b.d : (a, b) => (a.g.rank || 999) - (b.g.rank || 999) || a.d - b.d);
+    const shown = items.slice(0, 60);
+    list.innerHTML = shown.length ? '' : '<div class="g-empty">لا نتائج. جرّب كلمة أخرى أو فئة أخرى.</div>';
+    for (const { g, d, tag } of shown) {
       const b = document.createElement('button'); b.type = 'button';
-      b.innerHTML = `<b>${g.ar}</b><span>${fmtDist(d)}</span>`;
+      b.innerHTML = `<span class="g-nm"><b>${g.ar}</b><small>${tag}</small></span><span>${fmtDist(d)}</span>`;
       b.addEventListener('click', () => this.open(g));
       list.appendChild(b);
     }
-    this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
-    this.listExtras?.(this.card);
-    this.card.hidden = false;
+    if (items.length > shown.length) list.insertAdjacentHTML('beforeend', `<div class="g-empty">و${items.length - shown.length} غيرها؛ ابحث بالاسم أو اختر «الأقرب».</div>`);
   }
   open(g) {
     const p = this.player.pos, d = Math.hypot(g.x - p.x, g.z - p.z);
-    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${g.ar}</h3><div class="en">${g.en}</div><p>${g.desc}</p>
+    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${g.ar}</h3><div class="en">${g.en !== g.ar ? g.en : ''}</div><p>${g.desc || (g.tag ? g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') + ' من خريطة OpenStreetMap.' : '')}</p>
       <div class="row"><button class="g-btn g-go" type="button" data-a="go">خذني إليه</button><button class="g-btn g-alt" type="button" data-a="jump">انتقال فوري</button><span class="dist">على بعد ${fmtDist(d)}</span></div>`;
     this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
     this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.card.hidden = true; this.go(g); });
-    this.card.querySelector('[data-a="jump"]').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.teleport(g.key); });
+    this.card.querySelector('[data-a="jump"]').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.teleport(g); });
     this.card.hidden = false;
   }
   async go(g) {
@@ -296,7 +381,8 @@ export class Guide {
       if (ahead <= 0 || Math.abs(v.x) > 1.05 || v.y > 1.05 || v.y < -1.05) { pin.el.hidden = true; continue; }
       shown.push({ pin, d, x: (v.x + 1) / 2 * W, y: (1 - v.y) / 2 * H, isDest });
     }
-    shown.sort((a, b) => (b.isDest - a.isDest) || a.d - b.d);
+    // the destination first, then by distance weighted towards the must-see places
+    shown.sort((a, b) => (b.isDest - a.isDest) || a.d * (0.5 + a.pin.g.rank / 20) - b.d * (0.5 + b.pin.g.rank / 20));
     // no two labels on top of each other: lift a label above the ones already placed, or leave it out
     // keep clear of the top bar and the guidance banner
     const top = (document.querySelector('#hud .hud-row')?.getBoundingClientRect().bottom || 60) + 6;
