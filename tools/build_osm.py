@@ -38,6 +38,15 @@ P = {
 }
 DROP = {'kingdom': 115, 'faisaliah': 62, 'rafal': 38, 'masmak': 48, 'water': 22, 'tv': 26, 'moi': 95, 'turaif': 360, 'pif': 45}
 DROPW = [(*place(*P[k]), r) for k, r in DROP.items()]
+# footprints replaced by hand-built models: the Grand Mosque, Qasr Al-Hokm and its bridges, Murabba Palace,
+# the National Museum and King Fahd Library
+DROP_IDS = {40589083, 43511290, 239102, 6196003, 53447619, 1385940112, 1385940114}
+# mud-brick quarters around Murabba Palace and in Diriyah (At-Turaif and the Bujairi terrace)
+# no generated villas on the grounds of the hand-built landmarks (Red Palace, Souq Al-Zal, Murabba, Deera...)
+NOFILL = DROPW + [(*place(la, lo), r) for la, lo, r in [
+    (24.6423, 46.709066, 100), (24.62897, 46.71224, 70), (24.646534, 46.709277, 60), (24.630749, 46.711878, 90),
+    (24.630913, 46.710863, 110), (24.629736, 46.711181, 80), (24.647357, 46.710692, 190), (24.685663, 46.686448, 110)]]
+NAJDI = [(*place(24.6465, 46.7093), 260), (*place(24.7345, 46.5745), 900)]
 KAFD = place(24.7637, 46.6405)
 MASMAK = place(*P['masmak'])
 
@@ -262,9 +271,15 @@ for osm_id, way_id, g, name, bld, amen, other in con.execute(
     t = tags(other)
     if t.get('building:part') == 'yes' and bld in ('yes',):
         pass
+    ident = int(osm_id or way_id or 0)
+    if ident in DROP_IDS:
+        continue
+    # stations, car parks and passages below ground are not drawn above it
+    if (t.get('location') == 'underground' or t.get('parking') == 'underground'
+            or (parse_h(t.get('layer', '0')) or 0) < 0 or (parse_h(t.get('level', '0')) or 0) < 0):
+        continue
     geom = parse_gpkg(g)
     polys = [geom[1]] if geom[0] == 'Polygon' else [p[1] for p in geom[1]]
-    ident = int(osm_id or way_id or 0)
     for rings in polys:
         ring = [xz(*q) for q in rings[0]]
         if len(ring) > 1 and ring[0] == ring[-1]:
@@ -324,6 +339,8 @@ for osm_id, way_id, g, name, bld, amen, other in con.execute(
             st = ST['mosque']
         elif (cx - MASMAK[0]) ** 2 + (cz - MASMAK[1]) ** 2 < 1100 ** 2 and h < 16:
             st = ST['mud'] if r2 < 0.7 else ST['apt']
+        elif h < 16 and any((cx - x) ** 2 + (cz - z) ** 2 < r * r for x, z, r in NAJDI):
+            st = ST['mud']
         elif h > 26:
             st = ST['glass'] if (r2 < 0.62 or t.get('building:material') == 'glass') else ST['stone']
         elif bld == 'house':
@@ -493,6 +510,8 @@ for k in order:
                 off = w / 2 + 4.0 + depth / 2
                 cx = q0[0] + ux * t + nx * off * side
                 cz = q0[1] + uz * t + nz * off * side
+                if any((cx - x) ** 2 + (cz - z) ** 2 < r * r for x, z, r in NOFILL):
+                    continue
                 if free_rect(cx, cz, ux, uz, step - 1.0, depth):
                     mark_rect(cx, cz, ux, uz, step, depth + 1.5)
                     sd = h32(int(cx * 7) ^ int(cz * 13))

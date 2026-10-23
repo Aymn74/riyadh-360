@@ -209,6 +209,9 @@ const STOPS = [
 
 // themed tours: which stops each theme visits, and which stops matter most when time is short
 // travelling order: the old town, north past the towers, west to the Boulevard and the university, ending in Diriyah
+// stops that need a wider or higher circle: Tahlia is a street lined with towers, the library a 145 m cube,
+// the museum 330 m long
+const VIEW = { tahlia: { r: 320, y: 250, ly: 0 }, library: { r: 175, y: 70, ly: 14 }, museum: { r: 240, y: 85, ly: 10 } };
 const ORDER = ['hokm', 'turkiMosque', 'masmak', 'zal', 'redPalace', 'water', 'murabba', 'museum', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'rafal', 'kafd', 'boulevard', 'ksu', 'bujairi', 'turaif'];
 const THEMES = {
   all: ORDER,
@@ -444,7 +447,10 @@ export class Tour {
     this.el.hidden = true; document.body.classList.remove('touring');
     this.onEnd?.(this.stops[Math.min(this.i, this.stops.length - 1)], finished);
   }
-  orbitFor(s) { const r = Math.max(110, s.h * 1.15), y = Math.max(45, s.h * 0.55 + 30); return { r, y, ly: Math.max(8, s.h * 0.45) }; }
+  orbitFor(s) {
+    if (VIEW[s.key]) return VIEW[s.key];
+    const r = Math.max(110, s.h * 1.15), y = Math.max(45, s.h * 0.55 + 30); return { r, y, ly: Math.max(8, s.h * 0.45) };
+  }
   beginFlight(s) {
     const o = this.orbitFor(s);
     this.fly = { t: 0, p0: this.pos.clone(), l0: this.look.clone(), s, o };

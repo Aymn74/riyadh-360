@@ -27,6 +27,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 ### الاستكشاف
 - **ثلاث طرق للتنقل:** المشي، والقيادة، والطيران، في شوارع الرياض الحقيقية من طريق الملك فهد والعليا إلى الديرة والدرعية.
 - **أنفاق وجسور:** الطرق تنزل في الأنفاق وترتفع على الجسور كما في الواقع.
+- **الرياض القديمة بالطراز النجدي:** المصمك، وجامع الإمام تركي بمئذنتيه وجسوره إلى قصر الحكم، وسوق الزل، وقصر المربع، والقصر الأحمر، والمتحف الوطني، ومكتبة الملك فهد، مبنية على مخططاتها الحقيقية بجدران الطين والحجر والشرفات المثلثة، ومضاءة ليلاً.
 - **أربعة أوقات:** الظهيرة، والمغرب، والليل بإضاءة الشوارع والمباني، والهبوب (عاصفة رملية).
 - **حركة مرور** تسير على شبكة الطرق الفعلية وتلتزم بحدود السرعة.
 - **على الجوال:** عصا للتوجيه، ودواستا وقود وفرامل، وزر تيربو، وكاميرا مضبوطة للشاشة العمودية.
@@ -61,6 +62,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 ### Explore
 - **Walk, drive a white Land Cruiser, or fly a helicopter** through Riyadh's real streets.
 - **Tunnels and bridges** follow the road layers recorded in OpenStreetMap.
+- **Old Riyadh in Najdi style:** Masmak, the Grand Mosque with its minarets and bridges to Qasr Al-Hokm, Souq Al-Zal,
+  Murabba Palace, the Red Palace, the National Museum and King Fahd Library, built on their real outlines and floodlit at night.
 - **Four times of day:** noon, maghrib, night with street and building lights, and haboob (a sandstorm).
 - **Traffic** follows the real road network and speed limits.
 - **On phones:** a steering stick, accelerator and brake pedals, and a camera tuned for portrait screens.
@@ -89,8 +92,12 @@ Narration uses the browser's own speech voices, so the voices available depend o
 |---|---|
 | <img src="docs/masmak.jpg" alt="Masmak Fortress in the old town"> | <img src="docs/diriyah.jpg" alt="The mud-brick palaces of At-Turaif in Diriyah at sunset"> |
 | **Masmak Fortress**, where the story of modern Riyadh began · قصر المصمك | **At-Turaif, Diriyah** at sunset · حي الطريف في الدرعية |
-| <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> | <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower with Kingdom Centre behind it at noon"> |
-| **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً | **Al Faisaliah** and Kingdom Centre at noon · برج الفيصلية وبرج المملكة ظهراً |
+| <img src="docs/hokm-night.jpg" alt="Qasr Al-Hokm and the minarets of the Grand Mosque floodlit at night"> | <img src="docs/souq-night.jpg" alt="The lit shops of Souq Al-Zal under cloth shades, with Qasr Al-Hokm behind"> |
+| **Qasr Al-Hokm** and the Grand Mosque at night · قصر الحكم وجامع الإمام تركي ليلاً | **Souq Al-Zal** after dark · سوق الزل ليلاً |
+| <img src="docs/redpalace.jpg" alt="The Red Palace with its white trim, portico and palm garden"> | <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> |
+| **The Red Palace** in its garden · القصر الأحمر | **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً |
+| <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower with Kingdom Centre behind it at noon"> | <img src="docs/library.jpg" alt="King Fahd National Library, a cube of white fabric diamonds around the old domed library"> |
+| **Al Faisaliah** and Kingdom Centre at noon · برج الفيصلية وبرج المملكة ظهراً | **King Fahd National Library** · مكتبة الملك فهد الوطنية |
 
 **On a phone · على الجوال:** the guided tour with narration, the guide with shopping and food, the tourist panel with prayer times, and road guidance with the driving pedals.
 
@@ -120,12 +127,17 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
 ```
 
 - 92,656 road ways with names, lanes, one-way, speed limits, and the vertical profile of bridges and tunnels.
-- 89,040 building footprints. Few have heights in OSM, so heights are estimated from type, size and location.
-- 412,300 generated villa, shop and apartment plots, placed only along real residential streets on free land.
+- 88,894 building footprints (stations and car parks below ground are left out). Few have heights in OSM, so heights are estimated from type, size and location.
+- 412,354 generated villa, shop and apartment plots, placed only along real residential streets on free land.
 - A routing graph of 151,614 junctions and 226,991 road pieces. It is loaded only when a route is first asked for.
-- 1,284 named places for shopping and food, and 1,250 mosques.
-- Kingdom Centre, Al Faisaliah, PIF Tower, Burj Rafal, Masmak, the Water Tower, the TV Tower, the Ministry of
-  Interior and At-Turaif are hand-built models at their OSM positions.
+- 1,284 named places for shopping and food, and 1,249 mosques.
+- Kingdom Centre, Al Faisaliah, PIF Tower, Burj Rafal, the Water Tower, the TV Tower, the Ministry of Interior and
+  At-Turaif are hand-built models at their OSM positions.
+- The old town is hand-built on the real OSM outlines in Najdi style, with mud and limestone walls, triangular vents
+  and merlons, floodlit at night: Masmak Fortress, Deera Square, the Imam Turki bin Abdullah Grand Mosque with its two
+  minarets and the bridges to Qasr Al-Hokm, Souq Al-Zal, Murabba Palace, the Red Palace, the National Museum and its
+  curved wall, and King Fahd National Library in its cube of white fabric diamonds. Diriyah and the Murabba quarter
+  are drawn in mud brick.
 
 ## Files
 
@@ -139,6 +151,7 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
 - `js/tourist.js`: the tourist panel and prayer times
 - `js/materials.js`: facade shader with night lights, roads, ground, sky, palms
 - `js/landmarks.js`, `js/geo.js`, `js/city.js`: hand-built landmarks, coordinates and places, instancing helpers
+- `js/najdi.js`: wall textures and the builder for the Najdi buildings (walls, towers, merlons, courtyards)
 - `tools/`: the Python scripts that turn the GeoPackage into the files in `data/`
 
 To run it locally, serve the folder with any static server (for example `npx serve .`) and open `index.html`.
