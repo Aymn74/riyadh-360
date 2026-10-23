@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { PLACES, geo as geoOf } from './geo.js';
 import { F, RC } from './osm.js';
+import { esc } from './util.js';
 
 // [key, label height (m), category, importance (1 = must see), description, description in English]
 const SPOTS = [
@@ -167,7 +168,8 @@ const CSS = `
 .g-pin small { font-size: 11.5px; font-weight: 700; color: #f3d79a; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
 .g-pin i { width: 2px; height: 18px; background: linear-gradient(#f3d79a, transparent); }
 .g-pin.dest b { background: #0d6efd; border-color: #fff; }
-#guide-card { position: fixed; z-index: 30; right: 16px; bottom: 16px; width: min(360px, calc(100vw - 32px)); background: rgba(26,21,16,0.94); color: #fbf6ec; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 14px 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
+#guide-card { position: fixed; z-index: 30; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); width: min(360px, calc(100vw - 32px)); box-sizing: border-box;
+  max-height: 86vh; max-height: calc(100dvh - 32px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; overscroll-behavior: contain; background: rgba(26,21,16,0.94); color: #fbf6ec; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 14px 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
 #guide-card h3 { margin: 0; font-size: 19px; } #guide-card .en { font-size: 12.5px; opacity: .75; direction: ltr; text-align: right; }
 #guide-card p { margin: 10px 0 12px; font-size: 14px; line-height: 1.7; }
 #guide-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -182,16 +184,16 @@ const CSS = `
 .g-sp { flex: 1; }
 .g-nm { display: grid; gap: 1px; min-width: 0; } .g-nm small { opacity: .6; font-size: 11.5px; }
 .g-empty { opacity: .7; font-size: 13px; padding: 8px 4px; }
-#guide-list { max-height: 50vh; overflow: auto; display: grid; gap: 4px; margin-top: 8px; }
+#guide-list { max-height: none; overflow: auto; display: grid; gap: 4px; margin-top: 8px; }
 #guide-list button { display: flex; justify-content: space-between; gap: 10px; text-align: right; background: rgba(255,255,255,0.05); color: #fbf6ec; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; font: inherit; font-size: 14px; }
 #guide-list span { opacity: .7; font-size: 12px; direction: ltr; }
-#guide-nav { position: fixed; z-index: 12; left: 0; right: 0; margin: 0 auto; width: fit-content; top: calc(env(safe-area-inset-top, 0px) + 84px); display: flex; align-items: center; gap: 10px; background: #0d5ea8; color: #fff; border: 2px solid #fff; border-radius: 12px; padding: 6px 8px 6px 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); max-width: calc(100vw - 32px); }
+#guide-nav { position: fixed; z-index: 12; left: 0; right: 0; margin: 0 auto; width: fit-content; box-sizing: border-box; top: calc(env(safe-area-inset-top, 0px) + 84px); display: flex; align-items: center; gap: 10px; background: #0d5ea8; color: #fff; border: 2px solid #fff; border-radius: 12px; padding: 6px 8px 6px 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); max-width: calc(100vw - 32px); }
 #guide-nav svg { width: 34px; height: 34px; flex: none; transition: transform .15s linear; }
 #guide-nav .t { display: grid; line-height: 1.25; min-width: 0; } #guide-nav .t b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #guide-nav .t span { font-size: 12px; opacity: .9; }
 #guide-nav button { width: 30px; height: 30px; border-radius: 8px; border: 0; background: rgba(255,255,255,0.15); color: #fff; font-size: 16px; cursor: pointer; }
-#guide-toast { position: fixed; z-index: 13; left: 0; right: 0; margin: 0 auto; top: calc(env(safe-area-inset-top, 0px) + 150px); width: min(380px, calc(100vw - 32px)); background: rgba(26,21,16,0.92); color: #fbf6ec; border-radius: 12px; border: 1px solid rgba(243,215,154,0.5); padding: 10px 14px; font-size: 13.5px; line-height: 1.6; box-shadow: 0 8px 26px rgba(0,0,0,0.4); transition: opacity .4s; }
+#guide-toast { position: fixed; z-index: 13; left: 0; right: 0; margin: 0 auto; box-sizing: border-box; top: calc(env(safe-area-inset-top, 0px) + 150px); width: min(380px, calc(100vw - 32px)); background: rgba(26,21,16,0.92); color: #fbf6ec; border-radius: 12px; border: 1px solid rgba(243,215,154,0.5); padding: 10px 14px; font-size: 13.5px; line-height: 1.6; box-shadow: 0 8px 26px rgba(0,0,0,0.4); transition: opacity .4s; }
 #guide-toast b { color: #f3d79a; display: block; font-size: 15px; }
-@media (pointer: coarse) and (orientation: portrait) { #guide-nav { top: calc(env(safe-area-inset-top, 0px) + 112px); } #guide-toast { top: calc(env(safe-area-inset-top, 0px) + 170px); } #guide-card { right: 12px; left: 12px; width: auto; bottom: 12px; } }
+@media (pointer: coarse) and (orientation: portrait) { #guide-nav { top: calc(env(safe-area-inset-top, 0px) + 112px); } #guide-toast { top: calc(env(safe-area-inset-top, 0px) + 170px); } #guide-card { right: 12px; left: 12px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 86vh; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); } }
 `;
 const fmtDist = (m) => (m < 1000 ? Math.round(m / 10) * 10 + ' م' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' كم');
 
@@ -204,7 +206,7 @@ export class Guide {
     this.layer = document.createElement('div'); this.layer.id = 'guide-labels'; document.body.appendChild(this.layer);
     this.pins = GUIDE.map((g) => {
       const b = document.createElement('button'); b.className = 'g-pin'; b.type = 'button';
-      b.innerHTML = `<b>${g.ar}</b><small></small><i></i>`;
+      b.innerHTML = `<b>${esc(g.ar)}</b><small></small><i></i>`;
       b.addEventListener('click', () => this.open(g));
       this.layer.appendChild(b);
       return { g, el: b, dist: b.querySelector('small') };
@@ -221,13 +223,32 @@ export class Guide {
   }
   // ---- list of all places, nearest first
   // ---- the guide list: search, categories, nearest or most important first; shopping and food add real places from the map
-  async loadPoi() {
-    if (this.poi) return this.poi;
-    try {
-      const d = await (await fetch(this.osm.base + 'riyadh-poi.json')).json();
-      this.poi = d.poi.map(([kind, lat, lon, name, en, cuisine]) => ({ key: 'poi', kind, lat, lon, ar: name, en: en || name, cuisine, h: 14, cat: POI_KIND[kind][1], tag: POI_KIND[kind][0], ...geoOf(lat, lon) }));
-    } catch (e) { this.poi = []; }
-    return this.poi;
+  // null when the file could not be fetched: the list then offers a retry instead of looking empty
+  loadPoi() {
+    if (this.poi) return Promise.resolve(this.poi);
+    this.poiP ??= (async () => {
+      try {
+        const r = await fetch(this.osm.base + 'riyadh-poi.json');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        this.poi = d.poi.map(([kind, lat, lon, name, en, cuisine]) => ({ key: 'poi', kind, lat, lon, ar: name, en: en || name, cuisine, h: 14, cat: POI_KIND[kind][1], tag: POI_KIND[kind][0], ...geoOf(lat, lon) }));
+        return this.poi;
+      } catch (e) { return null; } finally { this.poiP = null; }
+    })();
+    return this.poiP;
+  }
+  // the routing graph, fetched once; a failed fetch leaves no router behind, so the next request tries again
+  ensureRouter() {
+    if (this.router) return Promise.resolve(true);
+    this.routerP ??= (async () => {
+      try {
+        const ok = await this.osm.loadExtra('riyadh-route.bin');
+        const r = ok && new Router(this.osm);
+        if (r && r.ok) this.router = r;
+        return !!this.router;
+      } catch (e) { return false; } finally { this.routerP = null; }
+    })();
+    return this.routerP;
   }
   openList(cat) {
     if (cat) this.cat = cat;
@@ -268,6 +289,11 @@ export class Guide {
       if (!this.poi) list.innerHTML = '<div class="g-empty">جارٍ تحميل المتاجر والمطاعم…</div>';
       const poi = await this.loadPoi();
       if (this.cat !== cat || this.q.trim().toLowerCase() !== q) return;   // the visitor moved on while it loaded
+      if (!poi) {
+        list.innerHTML = '<div class="g-empty">تعذّر تحميل المتاجر والمطاعم. تحقق من الاتصال.</div><button type="button" class="g-chip" data-retry>إعادة المحاولة</button>';
+        list.querySelector('[data-retry]').addEventListener('click', () => this.fillList());
+        return;
+      }
       const extra = poi.filter((g) => (cat === 'all' || g.cat === cat) && (this.sub === 'all' || g.kind === this.sub) && match(g))
         .map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z), tag: g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') }));
       if (this.sub !== 'all') items = items.filter(({ g }) => (this.sub === 'market' ? /سوق/.test(g.ar) : this.sub === 'mall' ? !/سوق/.test(g.ar) : false));
@@ -279,7 +305,7 @@ export class Guide {
     list.innerHTML = shown.length ? '' : '<div class="g-empty">لا نتائج. جرّب كلمة أخرى أو فئة أخرى.</div>';
     for (const { g, d, tag } of shown) {
       const b = document.createElement('button'); b.type = 'button';
-      b.innerHTML = `<span class="g-nm"><b>${g.ar}</b><small>${tag}</small></span><span>${fmtDist(d)}</span>`;
+      b.innerHTML = `<span class="g-nm"><b>${esc(g.ar)}</b><small>${esc(tag)}</small></span><span>${fmtDist(d)}</span>`;
       b.addEventListener('click', () => this.open(g));
       list.appendChild(b);
     }
@@ -287,7 +313,7 @@ export class Guide {
   }
   open(g) {
     const p = this.player.pos, d = Math.hypot(g.x - p.x, g.z - p.z);
-    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${g.ar}</h3><div class="en">${g.en !== g.ar ? g.en : ''}</div><p>${g.desc || (g.tag ? g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') + ' من خريطة OpenStreetMap.' : '')}</p>
+    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${esc(g.ar)}</h3><div class="en">${g.en !== g.ar ? esc(g.en) : ''}</div><p>${esc(g.desc || (g.tag ? g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') + ' من خريطة OpenStreetMap.' : ''))}</p>
       <div class="row"><button class="g-btn g-go" type="button" data-a="go">خذني إليه</button><button class="g-btn g-alt" type="button" data-a="jump">انتقال فوري</button><span class="dist">على بعد ${fmtDist(d)}</span></div>`;
     this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
     this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.card.hidden = true; this.go(g); });
@@ -301,14 +327,20 @@ export class Guide {
     if (!this.router) {
       this.nav.querySelector('span').textContent = 'جارٍ تحميل شبكة الطرق…';
       this.loading = true;
-      const ok = await this.osm.loadExtra('riyadh-route.bin').catch(() => false);
+      const ok = await this.ensureRouter();
       this.loading = false;
-      this.router = new Router(this.osm);
-      if (!ok || !this.router.ok) this.nav.querySelector('span').textContent = 'تعذّر تحميل الطرق، اتبع السهم';
+      if (!ok) {
+        this.offline = true;   // guidance falls back to a straight arrow until the visitor retries
+        const sp = this.nav.querySelector('span');
+        sp.textContent = 'تعذّر تحميل الطرق · اضغط هنا لإعادة المحاولة';
+        sp.style.cursor = 'pointer'; sp.onclick = () => { sp.onclick = null; sp.style.cursor = ''; if (this.dest === g) this.go(g); };
+        return;
+      }
+      this.offline = false;
     }
     if (this.dest === g && this.player.mode !== 'heli') this.reroute();
   }
-  clear() { this.dest = null; this.route = null; this.build([]); this.nav.hidden = true; }
+  clear() { this.dest = null; this.route = null; this.offline = false; this.build([]); this.nav.hidden = true; }
   reroute() {
     if (!this.router || !this.dest) return;
     const p = this.player.pos, g = this.dest;
@@ -344,7 +376,7 @@ export class Guide {
   }
   note(title, text, dir = 'rtl') {
     this.toast.dir = dir;
-    this.toast.innerHTML = `<b>${title}</b>${text}`;
+    this.toast.innerHTML = `<b>${esc(title)}</b>${esc(text)}`;
     this.toast.hidden = false; this.toast.style.opacity = 1;
     clearTimeout(this.toastT);
     this.toastT = setTimeout(() => { this.toast.style.opacity = 0; setTimeout(() => (this.toast.hidden = true), 450); }, 8000);
@@ -435,6 +467,6 @@ export class Guide {
     const rel = Math.atan2(Math.sin(camYaw - to), Math.cos(camYaw - to));
     this.nav.querySelector('svg').style.transform = `rotate(${rel * 180 / Math.PI}deg)`;
     const speed = this.player.mode === 'heli' ? 50 : this.player.mode === 'car' ? 14 : 1.4;
-    this.nav.querySelector('span').textContent = `${fmtDist(remain)} · نحو ${Math.max(1, Math.round(remain / speed / 60))} د`;
+    if (!this.offline) this.nav.querySelector('span').textContent = `${fmtDist(remain)} · نحو ${Math.max(1, Math.round(remain / speed / 60))} د`;
   }
 }

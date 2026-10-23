@@ -2,6 +2,7 @@
 // and a narrator (the browser's own speech voices) tells its story in the chosen language, with subtitles.
 import * as THREE from 'three';
 import { PLACES } from './geo.js';
+import { esc } from './util.js';
 
 export const LANGS = [
   { id: 'ar', name: 'العربية', bcp: 'ar-SA', dir: 'rtl' },
@@ -237,7 +238,7 @@ const THEME_INTRO = {
 const firstSentence = (t) => (t.match(/^(?:.*?(?:[。؟]|[.!?](?=\s|$))){1,2}/) || [t])[0].trim();
 
 const CSS = `
-#tour-panel { position: fixed; z-index: 25; left: 0; right: 0; margin: 0 auto; width: min(560px, calc(100vw - 24px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: rgba(20,16,12,0.9); color: #fbf6ec; border: 1px solid rgba(243,215,154,0.35); border-radius: 14px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
+#tour-panel { position: fixed; z-index: 25; left: 0; right: 0; margin: 0 auto; width: min(560px, calc(100vw - 24px)); box-sizing: border-box; max-height: 86vh; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: rgba(20,16,12,0.9); color: #fbf6ec; border: 1px solid rgba(243,215,154,0.35); border-radius: 14px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
 #tour-panel .top { display: flex; align-items: center; gap: 8px; }
 #tour-panel .top b { font-size: 16px; white-space: nowrap; } #tour-panel .top small { white-space: nowrap; }
 @media (max-width: 440px) { #tour-panel .top b:not(.keep) { display: none; } #tour-panel .tb { min-width: 38px; padding: 0 8px; } } #tour-panel .top small { opacity: .7; font-size: 12px; }
@@ -359,7 +360,7 @@ export class Tour {
         <div class="opts" role="group" aria-label="${b.theme}">${Object.keys(THEMES).map((k) => `<button class="opt" type="button" data-theme-id="${k}" aria-pressed="${k === this.theme}">${b.themes[k]}</button>`).join('')}</div>
         <div class="lbl">${b.length}</div>
         <div class="opts" role="group" aria-label="${b.length}">${Object.keys(DURS).map((k) => `<button class="opt" type="button" data-dur="${k}" aria-pressed="${k === this.dur}">${b.durs[k]}</button>`).join('')}</div>
-        <div class="plan"><b>${stops.length} ${b.stops} · ${b.about} ${this.estimate(stops)} ${b.min}</b><br>${stops.map(name).join(sep)}</div>
+        <div class="plan"><b>${stops.length} ${b.stops} · ${b.about} ${this.estimate(stops)} ${b.min}</b><br>${esc(stops.map(name).join(sep))}</div>
         <div class="go-row"><button class="tb go" type="button" data-a="go">▶ ${b.go}</button></div>
       </div>`;
     const keep = () => { try { localStorage.setItem('riyadh-tour-theme', this.theme); localStorage.setItem('riyadh-tour-dur', this.dur); localStorage.setItem('riyadh-tour-lang', this.lang); } catch (e) { /* private mode */ } };
@@ -382,7 +383,7 @@ export class Tour {
       <button class="tb" data-a="speed" type="button" title="${this.speed}x" aria-label="${this.speed}x">×${this.speed}</button>
       <button class="tb" data-a="next" type="button" title="${u.next}">⏭</button>
       <button class="tb" data-a="end" type="button" title="${u.end}">✕</button></div>
-      <div class="cap"><h4>${stopName}</h4><span class="txt"></span></div><div class="bar"><i></i></div>
+      <div class="cap"><h4>${esc(stopName)}</h4><span class="txt"></span></div><div class="bar"><i></i></div>
       ${!this.muted && this.synth && !this.voiceFor(this.lang) ? `<div class="note">${u.noVoice}</div>` : ''}`;
     this.el.querySelector('select').onchange = (e) => {
       this.lang = e.target.value;

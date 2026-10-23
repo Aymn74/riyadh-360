@@ -1,6 +1,7 @@
 // tourist.js — the tourist panel: Riyadh time and prayer times, nearby places, the nearest mosque,
 // tours, a surprise, the Riyadh passport of visited landmarks and an Arabic phrase of the day.
 import { GUIDE } from './guide.js';
+import { esc } from './util.js';
 
 // ---------------------------------------------------------------- prayer times (Umm al-Qura: Fajr 18.5°, Isha 90 min after Maghrib)
 const rad = (d) => d * Math.PI / 180, deg = (r) => r * 180 / Math.PI;
@@ -57,7 +58,7 @@ const PHRASES = [
 ];
 
 const CSS = `
-#tourist-panel { position: fixed; z-index: 31; left: 0; right: 0; margin: 0 auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: min(420px, calc(100vw - 24px)); max-height: calc(100vh - 120px); overflow: auto; background: rgba(22,18,14,0.95); color: #f6efe3; border: 1px solid rgba(243,215,154,0.3); border-radius: 18px; padding: 14px; box-shadow: 0 14px 44px rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: grid; gap: 12px; font-size: 13.5px; }
+#tourist-panel { position: fixed; z-index: 31; left: 0; right: 0; margin: 0 auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); width: min(420px, calc(100vw - 24px)); box-sizing: border-box; max-height: 86vh; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: auto; overscroll-behavior: contain; background: rgba(22,18,14,0.95); color: #f6efe3; border: 1px solid rgba(243,215,154,0.3); border-radius: 18px; padding: 14px; box-shadow: 0 14px 44px rgba(0,0,0,0.5); backdrop-filter: blur(10px); display: grid; gap: 12px; font-size: 13.5px; }
 #tourist-panel .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 #tourist-panel h3 { margin: 0; font-size: 18px; }
 #tourist-panel .clock { color: #f1d39b; font-variant-numeric: tabular-nums; font-size: 13px; text-align: left; }
@@ -140,7 +141,7 @@ export class TouristPanel {
         <button type="button" data-go="tour"><b>▶</b>جولة<small>Tour</small></button>
         <button type="button" data-go="surprise"><b>✦</b>فاجئني<small>Surprise</small></button>
       </div>
-      ${dest ? `<button class="trip" type="button" data-go="trip"><span>إلى ${dest.ar}<br><small>${fmtDist(Math.hypot(dest.x - p.x, dest.z - p.z))} · خط مستقيم</small></span><span>✕ إلغاء</span></button>` : ''}
+      ${dest ? `<button class="trip" type="button" data-go="trip"><span>إلى ${esc(dest.ar)}<br><small>${fmtDist(Math.hypot(dest.x - p.x, dest.z - p.z))} · خط مستقيم</small></span><span>✕ إلغاء</span></button>` : ''}
       <div class="sec">جواز الرياض · ${AR(this.visited.size)} من ${AR(GUIDE.length)}</div>
       <div class="stamps" title="اقترب من أي معلم ليُختم جوازك">${GUIDE.map((g, i) => `<i class="${this.visited.has(g.key) ? 'got' : ''}" title="${g.ar}">${AR(i + 1)}</i>`).join('')}</div>
       <div class="phrase"><span class="sec" style="margin:0">عبارة اليوم · Phrase of the day</span><span class="ar">${ph[0]}</span><span class="tr">${ph[1]} — ${ph[2]}</span><button type="button" data-go="say">🔊 استمع</button></div>
@@ -148,7 +149,7 @@ export class TouristPanel {
     this.wire();
   }
   renderList(title, items) {
-    this.el.innerHTML = this.header(title) + `<div class="list">${items.map((it, i) => `<button type="button" data-i="${i}"><b>${it.name}</b><span>${fmtDist(it.d)}</span></button>`).join('') || '<div class="muted">لا شيء قريب هنا.</div>'}</div>
+    this.el.innerHTML = this.header(title) + `<div class="list">${items.map((it, i) => `<button type="button" data-i="${i}"><b>${esc(it.name)}</b><span>${fmtDist(it.d)}</span></button>`).join('') || '<div class="muted">لا شيء قريب هنا.</div>'}</div>
       <button class="x" type="button" data-go="home" style="width:auto;padding:0 12px">‹ رجوع</button>`;
     this.wire();
     this.el.querySelectorAll('[data-i]').forEach((b) => (b.onclick = () => items[+b.dataset.i].pick()));

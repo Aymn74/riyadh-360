@@ -16,6 +16,7 @@ import { Cars } from './cars.js';
 import { Guide } from './guide.js';
 import { Tour, LANGS, ARRIVED } from './tour.js';
 import { TouristPanel } from './tourist.js';
+import { esc } from './util.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t, p) => { $('loading-status').textContent = t; if (p !== undefined) $('loading-progress').style.width = (p * 100).toFixed(0) + '%'; };
@@ -771,7 +772,7 @@ let pin = null;
     for (const e of searchIndex().filter((e) => e.ar.includes(q) || e.en.toLowerCase().includes(q)).slice(0, 7)) {
       const b = document.createElement('button');
       b.type = 'button'; b.className = 'pop-item';
-      b.innerHTML = `<span class="pop-name">${e.ar}</span><span class="pop-sub">${e.kind} · ${e.en}</span>`;
+      b.innerHTML = `<span class="pop-name">${esc(e.ar)}</span><span class="pop-sub">${esc(e.kind)} · ${esc(e.en)}</span>`;
       b.onclick = () => { view.x = e.x; view.z = e.z; view.s = Math.max(view.s, 0.15); pin = { x: e.x, z: e.z }; $('fullmap-pin-label').textContent = e.ar; $('fullmap-go').disabled = false; results.innerHTML = ''; drawAtlas(); };
       results.appendChild(b);
     }
@@ -948,8 +949,8 @@ async function boot() {
     frame();
   } catch (err) {
     console.error(err);
-    status('تعذّر تشغيل المشهد: ' + err.message + ' — يحتاج المتصفح إلى دعم WebGL2.');
-    $('loading-overlay').classList.add('error');
+    const msg = 'تعذّر تشغيل المشهد: ' + err.message;
+    if (window.__bootFail) window.__bootFail(msg); else { status(msg); $('loading-overlay').classList.add('error'); }
   }
 }
 boot();
