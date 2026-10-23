@@ -1,4 +1,4 @@
-// tests/run.mjs — browser regression tests for Slop Riyadh.
+// tests/run.mjs — browser regression tests for Riyadh 360.
 // usage: node tests/run.mjs            (needs playwright; set CHROME=/path/to/chrome to use a local browser,
 //                                       THREE_DIR=/path/to/node_modules/three to serve three.js without the network)
 import http from 'node:http';

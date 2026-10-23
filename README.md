@@ -1,6 +1,6 @@
 <div align="center">
 
-# Slop Riyadh · سلوب الرياض
+# Riyadh 360 · الرياض 360
 
 **A 3D Riyadh in the browser, built from real OpenStreetMap data · الرياض ثلاثية الأبعاد في المتصفح من بيانات الخريطة المفتوحة**
 
@@ -22,7 +22,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ## بالعربية
 
-مدينة الرياض ثلاثية الأبعاد في المتصفح، مبنية من بيانات الخريطة المفتوحة الحقيقية: شوارعها ومبانيها وحدائقها وأنفاقها وجسورها. تجوّل فيها مشياً، أو بسيارة لاندكروزر، أو بطائرة هليكوبتر، أو دع الجولة السياحية تأخذك.
+**الرياض 360**: مدينة الرياض ثلاثية الأبعاد في المتصفح، مبنية من بيانات الخريطة المفتوحة الحقيقية: شوارعها ومبانيها وحدائقها وأنفاقها وجسورها. تجوّل فيها مشياً، أو بسيارة لاندكروزر، أو بطائرة هليكوبتر، أو دع الجولة السياحية تأخذك.
 
 ### الاستكشاف
 - **ثلاث طرق للتنقل:** المشي، والقيادة، والطيران، في شوارع الرياض الحقيقية من طريق الملك فهد والعليا إلى الديرة والدرعية.
@@ -61,6 +61,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 </div>
 
 ## In English
+
+**Riyadh 360** is a 3D Riyadh in the browser, built from real OpenStreetMap data.
 
 ### Explore
 - **Walk, drive a white Land Cruiser, or fly a helicopter** through Riyadh's real streets.

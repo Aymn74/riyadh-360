@@ -1,8 +1,8 @@
 {
-  "name": "slop-riyadh-tests",
+  "name": "riyadh-360-tests",
   "private": true,
   "type": "module",
-  "description": "Browser regression tests for Slop Riyadh",
+  "description": "Browser regression tests for Riyadh 360",
   "scripts": { "test": "node run.mjs" },
   "devDependencies": { "playwright": "1.56.1" }
 }
