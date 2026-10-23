@@ -80,6 +80,8 @@ const PRESETS = {
   haboob: { ar: 'عاصفة رملية', sunEl: 42, sunAz: 205, sun: '#ffc78a', sunI: 0.95, hs: '#d39a5a', hg: '#9a6a3c', hi: 1.15, top: '#b67b44', horizon: '#c98c50', bottom: '#a8733f', glow: '#e0a060', fog: '#c3854b', near: 15, far: 750, night: 0.3, exp: 1.0, stars: 0, bloom: 0.22, env: 0.5, dust: 1 }
 };
 let preset = PRESETS.maghrib, presetId = 'maghrib';
+let inTunnel = 0, tunnelRun = 0;
+const TUNNEL_FOG = new THREE.Color('#2a2724');
 const sunDir = new THREE.Vector3();
 function applyPreset(id) {
   presetId = id; preset = PRESETS[id];
@@ -306,7 +308,7 @@ function updateCamera(dt) {
   }
   const h = player.height;
   if (id === 'pov') {
-    const eye = player.mode === 'car' ? 1.55 : player.mode === 'heli' ? player.alt + 2.2 : 1.7 + player.alt;
+    const eye = player.mode === 'car' ? player.gy + 1.55 : player.mode === 'heli' ? player.alt + 2.2 : player.gy + 1.7 + player.alt;
     const fx = player.mode === 'car' ? 0.4 : player.mode === 'heli' ? 1.8 : 0.25;
     camera.position.set(p.x + fwd.x * fx, eye, p.z + fwd.z * fx);
     const yaw = player.yaw + orbitCtl.yaw;
@@ -357,7 +359,7 @@ function setCamera(id) {
 
 // ---------- input ----------
 const keys = {};
-const input = { up: false, down: false, left: false, right: false, boost: false, jump: false, descend: false, ax: 0, ay: 0, az: 0 };
+const input = { up: false, down: false, left: false, right: false, boost: false, jump: false, descend: false, ax: 0, ay: 0, az: 0, analog: false };
 const typing = () => document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 addEventListener('keydown', (e) => {
   if (typing()) return;
@@ -404,6 +406,7 @@ function readKeys() {
 }
 // touch: joystick on the left, drag elsewhere to look
 let touchUp = false, touchDown = false, touchBoost = false, touchGas = false, touchBrake = false;
+let wheelTick = null;
 if (touch) {
   $('touch-controls').hidden = false;
   const stick = $('touch-stick'), knob = $('touch-stick-knob');
@@ -423,6 +426,36 @@ if (touch) {
   stick.addEventListener('pointermove', move);
   const end = (e) => { if (e.pointerId !== sid) return; sid = null; input.ax = input.ay = 0; knob.style.transform = ''; };
   stick.addEventListener('pointerup', end); stick.addEventListener('pointercancel', end);
+  // driving: a steering wheel turned by circling the thumb around it, about 150° each way, that springs back
+  // to centre when let go, the way a real wheel self-centres
+  const wheel = $('touch-wheel'), wheelArt = wheel.querySelector('svg'), WMAX = 2.6;
+  let wid = null, wc = null, wPrev = 0, wa = 0;
+  wheel.addEventListener('pointerdown', (e) => {
+    wid = e.pointerId; const r = wheel.getBoundingClientRect(); wc = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    wPrev = Math.atan2(e.clientY - wc.y, e.clientX - wc.x); e.preventDefault();
+    try { wheel.setPointerCapture(wid); } catch (err) { /* a pointer the browser no longer tracks */ }
+  });
+  wheel.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== wid) return;
+    const dx = e.clientX - wc.x, dy = e.clientY - wc.y;
+    if (Math.hypot(dx, dy) < 14) return;   // too near the hub to read an angle
+    const a = Math.atan2(dy, dx), d = Math.atan2(Math.sin(a - wPrev), Math.cos(a - wPrev));
+    wPrev = a; wa = THREE.MathUtils.clamp(wa + d, -WMAX, WMAX);
+  });
+  const wend = (e) => { if (e.pointerId === wid) wid = null; };
+  wheel.addEventListener('pointerup', wend); wheel.addEventListener('pointercancel', wend);
+  wheelTick = (dt) => {
+    const on = player.mode === 'car';
+    if (!on) { if (input.analog) { input.ax = 0; wa = 0; input.analog = false; } return; }
+    input.analog = true;
+    if (wid === null) wa *= Math.exp(-dt * 7);
+    if (Math.abs(wa) < 0.002) wa = 0;
+    wheelArt.style.transform = `rotate(${wa}rad)`;
+    wheel.setAttribute('aria-valuenow', Math.round(wa * 180 / Math.PI));
+    // a little play around the centre, then a gentle curve: small corrections stay small
+    const x = wa / WMAX, a = Math.max(0, (Math.abs(x) - 0.03) / 0.97);
+    input.ax = -Math.sign(x) * Math.pow(a, 1.25);
+  };
   const el = renderer.domElement;
   const pts = new Map();
   el.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); });
@@ -838,6 +871,7 @@ function frame(ts) {
   fpsAvg += (1 / Math.max(frameDt, 1e-3) - fpsAvg) * 0.05;
   U.uTime.value += frameDt;
   readKeys();
+  wheelTick?.(frameDt);
   for (let k = 0; k < subN; k++) player.update(dt, tour?.active ? IDLE : input, traffic);
   updateCamera(frameDt);
   const scenic = !!tour?.active || !!SCENIC.find((s) => s.id === camId || (camId === 'drone' && SCENIC[directorIdx].id === s.id));
@@ -858,12 +892,30 @@ function frame(ts) {
     dust.position.set(camera.position.x, Math.max(0, camera.position.y - 40), camera.position.z);
     dust.rotation.y += frameDt * 0.15;
   }
-  // headlights in the dark
-  player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, U.uNight.value - 0.4) * 900 : 0;
+  // inside a covered tunnel the sky goes dark, the eye adapts (so the exit glares) and the lamps take over
+  {
+    const deep = player.mode !== 'heli' && player.gy < -5.2 && !!osm.nearestRoad(player.pos.x, player.pos.z, 9, (r) => osm.flags(r) & F.tunnel);
+    inTunnel += ((deep ? 1 : 0) - inTunnel) * Math.min(1, frameDt * (deep ? 2.2 : 1.4));
+    tunnelRun += Math.abs(player.speed) * frameDt;
+    sun.intensity = preset.sunI * (1 - 0.93 * inTunnel);
+    hemi.intensity = preset.hi * (1 - 0.78 * inTunnel);
+    renderer.toneMappingExposure = preset.exp * (1 + 0.12 * inTunnel);
+    if (bloom) bloom.strength = preset.bloom * (1 - 0.45 * inTunnel);
+    scene.fog.color.set(preset.fog).lerp(TUNNEL_FOG, inTunnel);
+  }
+  // headlights in the dark (and under ground)
+  player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, Math.max(U.uNight.value, inTunnel * 0.7) - 0.4) * 900 : 0;
   {
     const n = Math.max(0, U.uNight.value - 0.3) / 0.7, h = player.mode === 'heli' ? 0 : player.mode === 'car' ? 11 : 6;
     nearGlow.intensity = player.mode === 'heli' ? 0 : n * (player.mode === 'car' ? 85 : 46);   // high above, so the car roof is not blown out
     nearGlow.position.set(player.pos.x - Math.cos(player.yaw) * 3, player.height - (player.mode === 'car' ? 1.3 : 1.6) + h, player.pos.z + Math.sin(player.yaw) * 3);
+    if (inTunnel > 0.01) {
+      // under the ceiling lamps: a warm light that swells and fades as each fitting (every 3 m) passes overhead
+      const pulse = 0.5 + 0.5 * Math.cos(tunnelRun / 3 * Math.PI * 2);
+      nearGlow.intensity = nearGlow.intensity * (1 - inTunnel) + inTunnel * (7 + 10 * pulse);
+      nearGlow.position.set(player.pos.x + Math.cos(player.yaw) * 5, player.gy + 5.4, player.pos.z - Math.sin(player.yaw) * 5);
+      nearGlow.distance = 46 - 30 * inTunnel;
+    } else nearGlow.distance = 46;
   }
   if (composer) composer.render(); else renderer.render(scene, camera);
   mmTimer -= frameDt;

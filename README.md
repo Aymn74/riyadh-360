@@ -26,11 +26,12 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ### الاستكشاف
 - **ثلاث طرق للتنقل:** المشي، والقيادة، والطيران، في شوارع الرياض الحقيقية من طريق الملك فهد والعليا إلى الديرة والدرعية.
-- **أنفاق وجسور:** الطرق تنزل في الأنفاق وترتفع على الجسور كما في الواقع.
+- **أنفاق وجسور:** الطرق تنزل في الأنفاق وترتفع على الجسور كما في الواقع. داخل النفق جدران مكسوة بشريط أزرق، وصفّان متصلان من المصابيح، وممشى بحافة صفراء وسوداء، وأضواء إرشاد، ولوحات طوارئ ومراوح تهوية؛ ويخفت ضوء النهار وتتكيف العين فيبهر ضوء المخرج.
 - **الرياض القديمة بالطراز النجدي:** المصمك، وجامع الإمام تركي بمئذنتيه وجسوره إلى قصر الحكم، وسوق الزل، وقصر المربع، والقصر الأحمر، والمتحف الوطني، ومكتبة الملك فهد، مبنية على مخططاتها الحقيقية بجدران الطين والحجر والشرفات المثلثة، ومضاءة ليلاً.
 - **أربعة أوقات:** الظهيرة، والمغرب، والليل بإضاءة الشوارع والمباني، والهبوب (عاصفة رملية).
 - **حركة مرور** تسير على شبكة الطرق الفعلية وتلتزم بحدود السرعة.
-- **على الجوال:** عصا للتوجيه، ودواستا وقود وفرامل، وزر تيربو، وكاميرا مضبوطة للشاشة العمودية.
+- **على الجوال:** مقود حقيقي تديره بإصبعك حتى 150° في كل اتجاه ويعود إلى المنتصف عند تركه، ودواستا وقود وفرامل، وزر تيربو، وكاميرا مضبوطة للشاشة العمودية.
+- **قيادة واقعية:** انعطاف بنموذج لاندكروزر الحقيقي (قاعدة عجلات 2.85 م ودائرة دوران 5.9 م) محدود بتماسك الإطارات، فتُؤخذ المخارج بسرعة 60 كم/س، ومساعد المسار لا يتدخل إلا بعد ثانية من ترك المقود.
 
 ### دليل الرياض (زر البوصلة)
 - **39 معلماً** في ثماني فئات: تاريخ وتراث، أبراج ومعمار، متاحف وثقافة، مساجد، جامعات، ترفيه وحدائق، تسوق، مطاعم ومقاهٍ. من بينها المصمك وسوق الزل وقصر المربع وقصر الحكم وبرج المملكة وجامعة الملك سعود والبوليفارد والطريف.
@@ -63,12 +64,17 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ### Explore
 - **Walk, drive a white Land Cruiser, or fly a helicopter** through Riyadh's real streets.
-- **Tunnels and bridges** follow the road layers recorded in OpenStreetMap.
+- **Tunnels and bridges** follow the road layers recorded in OpenStreetMap. Inside a tunnel: clad walls with a blue band,
+  two continuous rows of lamps, a walkway with a painted kerb, amber guidance lights, emergency signs and jet fans; the
+  daylight fades, the eye adapts, and the exit glares.
 - **Old Riyadh in Najdi style:** Masmak, the Grand Mosque with its minarets and bridges to Qasr Al-Hokm, Souq Al-Zal,
   Murabba Palace, the Red Palace, the National Museum and King Fahd Library, built on their real outlines and floodlit at night.
 - **Four times of day:** noon, maghrib, night with street and building lights, and haboob (a sandstorm).
 - **Traffic** follows the real road network and speed limits.
-- **On phones:** a steering stick, accelerator and brake pedals, and a camera tuned for portrait screens.
+- **On phones:** a real steering wheel turned by circling your thumb, up to 150° each way, that springs back when let go,
+  accelerator and brake pedals, and a camera tuned for portrait screens.
+- **Driving** follows a Land Cruiser's geometry (2.85 m wheelbase, 5.9 m turning radius) limited by tyre grip, so exits
+  can be taken at 60 km/h; lane keeping steps in only after a second hands-off.
 
 ### Riyadh guide (compass button, `G`)
 - **39 landmarks** in eight categories, with search and sorting by importance or distance.
@@ -116,11 +122,15 @@ direction and length, and the food list sorted into traditional, fast food, Asia
 
 <img src="docs/custom-tour.jpg" alt="Four phone screens: picking landmarks with their notes, the best route by road, and the food filters" width="100%">
 
+**In a tunnel · داخل النفق:** the Abi Bakr Al Siddiq tunnel at dusk and at night, with the steering wheel turned a quarter right.
+
+<img src="docs/tunnel.jpg" alt="Three phone screens inside the Abi Bakr Al Siddiq tunnel: the steering wheel, the lamp rows, and night" width="100%">
+
 ## Controls
 
 | | Keyboard | Phone |
 |---|---|---|
-| Move | WASD / arrows | left stick (steering only while driving) |
+| Move | WASD / arrows | left stick; a steering wheel while driving |
 | Accelerate / brake | W / S | right pedals |
 | Boost | Shift | تيربو |
 | Jump / climb, descend | Space or E, Q | on-screen buttons |
@@ -174,7 +184,7 @@ To run it locally, serve the folder with any static server (for example `npx ser
 The tests open the full site in a browser and check what a visitor relies on: map names shown as text and never
 run, recovery after failed downloads, routes by car and on foot to every landmark, panels that fit small phone
 screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the sorting
-of food and shopping, and the best order of a custom tour.
+of food and shopping, the best order of a custom tour, steering (an exit at 60 km/h, the touch wheel) and tunnels.
 They run on every push (GitHub Actions, `.github/workflows/test.yml`).
 
 ```

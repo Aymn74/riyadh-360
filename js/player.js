@@ -333,12 +333,23 @@ export class Player {
       this.speed = THREE.MathUtils.clamp(this.speed + acc * dt, -6, Math.max(maxV, this.speed));
       if (this.speed > maxV) this.speed += (maxV - this.speed) * Math.min(1, dt * 0.8);
       this.lastAcc = acc;
-      this.steer += (turn - this.steer) * Math.min(1, dt * (Math.abs(turn) > Math.abs(this.steer) ? 4 : 7));
+      // the steering wheel: a touch wheel sets it directly; keys turn it at a steady rate (full lock in about
+      // a third of a second) and it springs back to centre faster than it goes out
+      const want = THREE.MathUtils.clamp(turn, -1, 1);
+      const out = Math.abs(want) > Math.abs(this.steer) && want * this.steer >= 0;
+      const rate = input.analog ? 14 : out ? 3.2 : 6.5;
+      this.steer += THREE.MathUtils.clamp(want - this.steer, -rate * dt, rate * dt);
       const v = Math.abs(this.speed);
-      // turning circle: 5.8 m at walking pace (a Land Cruiser), widened by tyre grip (7 m/s2 sideways) at speed
-      const radius = Math.max(5.8, (v * v) / 7);
-      this.yaw += this.steer * dt * (v / radius) * Math.sign(this.speed || 1);
-      if (Math.abs(turn) < 0.12 && v > 6 && this.osm && this.gy < 2) this.laneKeep(dt);
+      // bicycle model of a Land Cruiser: 2.85 m wheelbase, 33° at the front wheels on full lock (a 5.9 m turning
+      // radius), and never more yaw than about 0.95 g of tyre grip allows, so a motorway exit can be taken at 60 km/h
+      const delta = this.steer * 0.45;
+      let yawRate = (v * Math.tan(delta)) / 2.85;
+      const grip = 9.3 / Math.max(v, 0.5);
+      yawRate = THREE.MathUtils.clamp(yawRate, -grip, grip);
+      this.yaw += yawRate * dt * Math.sign(this.speed || 1);
+      this.steerIdle = Math.abs(turn) < 0.05 ? (this.steerIdle || 0) + dt : 0;
+      // lane keeping only after a second hands-off, so it never pulls the car away from an exit being taken
+      if (this.steerIdle > 1 && v > 6 && this.osm && this.gy < 2) this.laneKeep(dt);
       this.move(dt);
       const m = this.models.car;
       this.gy += (this.groundAt(p.x, p.z) - this.gy) * Math.min(1, dt * 10);
@@ -350,7 +361,7 @@ export class Player {
       m.rotateX(-this.steer * Math.min(1, v / 25) * 0.035);
       m.userData.lights.tail.emissiveIntensity = acc < -1 && this.speed > 0.5 ? 2.6 : 0.8;   // brake lights
       this.wheelRot = ((this.wheelRot || 0) - this.speed * dt / 0.4) % (Math.PI * 2);
-      for (const [i, { w, spin }] of m.userData.wheels.entries()) { w.rotation.y = i < 2 ? this.steer * 0.45 : 0; spin.rotation.z = this.wheelRot; }
+      for (const [i, { w, spin }] of m.userData.wheels.entries()) { w.rotation.y = i < 2 ? delta : 0; spin.rotation.z = this.wheelRot; }
     } else {
       const maxV = boost ? 70 : 50;   // 250 / 180 km/h
       const target = fwd * maxV;
@@ -379,14 +390,14 @@ export class Player {
     if (this.canStand(p.x, p.z + dz)) { p.z += dz; this.speed *= 1 - Math.min(1, dt * 1.5); return; }
     this.speed *= 1 - Math.min(1, dt * 6);
   }
-  // when the driver is not steering, ease the heading onto the road direction (within 25 degrees)
+  // when the driver is not steering, ease the heading onto the road direction (within 17 degrees)
   laneKeep(dt) {
     const hit = this.osm.nearestRoad(this.pos.x, this.pos.z, 4);
     if (!hit || hit.dist > 0) return;
     let ry = Math.atan2(-hit.dirz, hit.dirx);
     let d = Math.atan2(Math.sin(ry - this.yaw), Math.cos(ry - this.yaw));
     if (Math.abs(d) > Math.PI / 2) { ry += Math.PI; d = Math.atan2(Math.sin(ry - this.yaw), Math.cos(ry - this.yaw)); }
-    if (Math.abs(d) < 0.44) this.yaw += d * Math.min(1, dt * 1.2);
+    if (Math.abs(d) < 0.3) this.yaw += d * Math.min(1, dt * 0.9);
   }
   get height() { return this.mode === 'heli' ? this.alt : this.gy + (this.mode === 'car' ? 1.3 : 1.6 + this.alt); }
 }

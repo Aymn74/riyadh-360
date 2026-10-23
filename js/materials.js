@@ -14,7 +14,7 @@ export const U = {
 // Box styles (instance attribute aStyle)
 export const ST = {
   villa: 0, wall: 1, shop: 2, apt: 3, glass: 4, stone: 5, mud: 6, slab: 7, plain: 8, mosque: 9,
-  lamp: 10, green: 11, paint: 12, median: 13, led: 14, sign: 15, tunnelLamp: 16
+  lamp: 10, green: 11, paint: 12, median: 13, led: 14, sign: 15, tunnelLamp: 16, tunnel: 17, tunnelCeil: 18, glow: 19
 };
 
 // Open trenches cut a hole in the ground: these invisible quads mark the stencil buffer, and the ground,
@@ -65,6 +65,27 @@ const FACADE = /* glsl */`
   // lamp heads, minaret rings, LED bands, signs, paint
   if (st == 10.0) { gEmis = vec3(1.0, 0.84, 0.6) * 7.0 * uNight; diffuseColor.rgb = vec3(0.95); }
   else if (st == 16.0) { gEmis = vec3(1.0, 0.86, 0.62) * 4.0; diffuseColor.rgb = vec3(0.95); }
+  else if (st == 17.0) {
+    // tunnel walls: a grey plinth, a blue band, cream panels and a dark strip under the ceiling,
+    // lit by the rows of lamps overhead (brighter under each fitting) whatever the sun outside is doing
+    float y = yb - 0.3;
+    vec3 c = y < 1.0 ? vec3(0.36, 0.37, 0.39) : y < 1.3 ? vec3(0.09, 0.38, 0.52) : y < 4.7 ? vec3(0.74, 0.72, 0.66) : vec3(0.2, 0.21, 0.23);
+    if (y >= 1.3 && y < 4.7) {
+      vec2 pc = vec2(hc / 2.4, (y - 1.3) / 1.13), pj = fract(pc);
+      c *= (1.0 - 0.2 * step(0.975, max(pj.x, pj.y))) * (0.96 + 0.07 * h21(floor(pc) + vSeed));
+    }
+    if (y < 1.0) c *= 0.88 + 0.12 * vn(vec2(hc, y) * 3.0);
+    if (!side) c = vec3(0.3, 0.31, 0.33);
+    diffuseColor.rgb = c;
+    float pulse = 0.5 + 0.5 * cos(6.2831 * (hc - 1.5) / 3.0);
+    gEmis = c * vec3(1.0, 0.95, 0.86) * (0.16 + (0.13 * pulse + 0.07) * smoothstep(0.5, 5.2, y));
+  }
+  else if (st == 18.0) {
+    // tunnel ceiling: dark sprayed concrete
+    diffuseColor.rgb = vec3(0.19, 0.2, 0.21) * (0.88 + 0.18 * vn(vWP.xz * 0.7));
+    gEmis = diffuseColor.rgb * 0.3;
+  }
+  else if (st == 19.0) { gEmis = diffuseColor.rgb * 2.6; }   // signs and guidance lights that shine day and night
   else if (st == 11.0) { gEmis = vec3(0.15, 1.0, 0.35) * 3.5 * uNight; diffuseColor.rgb = vec3(0.6, 0.9, 0.7); }
   else if (st == 14.0) {
     vec3 led = 0.5 + 0.5 * cos(6.2831 * (uTime * 0.05 + vSeed + vec3(0.0, 0.33, 0.67)));

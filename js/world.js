@@ -25,7 +25,8 @@ const WHITE = col('#f4f4f0'), POLE = col('#6d7176'), LAMP = col('#fff1cf'), DECK
 const ART_LIGHT = new THREE.Color(1.0, 0.9, 0.74).multiplyScalar(0.42), LOCAL_LIGHT = new THREE.Color(1.0, 0.72, 0.42).multiplyScalar(0.48);
 
 const roadMat = makeRoadMaterial(), walkMat = skipHoles(makeWalkMaterial()), landMat = skipHoles(makeLandMaterial());
-const CONCRETE = col('#b9b2a6'), TUNNEL_WALL = col('#cfc9bd'), TUNNEL_LAMP = col('#fff4dc');
+const CONCRETE = col('#b9b2a6'), TUNNEL_WALL = col('#cfc9bd'), TUNNEL_LAMP = col('#fff4dc'), TUNNEL_CEIL = col('#36383b'), KERB = col('#8f8b84');
+const FAN = col('#55585c'), EXIT_SIGN = col('#14a050'), AMBER = col('#ffae3a');
 const bldMat = makeBuildingMaterial({ always: true, fac: true });
 const boxMat = makeBuildingMaterial({ always: true });
 
@@ -222,15 +223,30 @@ export class World {
         if (depth < 0.3) { prevClosed = false; continue; }
         const mx = x0 + ux * (t0 + t1) / 2, mz = z0 + uz * (t0 + t1) / 2;
         const closed = covered && depth >= COVER;
+        const WO = closed ? hw + 1.3 : hw + 0.45;   // inside a tunnel the walls stand back behind a walkway
         for (const sd of [-1, 1]) {
-          const ox = nx * (hw + 0.45) * sd, oz = nz * (hw + 0.45) * sd;
-          if (closed) boxes.boxW(mx + ox, mz + oz, sl + 0.1, 0.9, lo - 0.3, 6.3 + 0.3, yaw, TUNNEL_WALL, ST.plain);
+          const ox = nx * WO * sd, oz = nz * WO * sd;
+          if (closed) boxes.boxW(mx + ox, mz + oz, sl + 0.1, 0.9, lo - 0.3, 6.3 + 0.3, yaw, TUNNEL_WALL, ST.tunnel);
           else boxes.boxW(mx + ox, mz + oz, sl + 0.1, 0.9, lo - 0.3, -lo + 1.2, yaw, CONCRETE, ST.plain);   // retaining wall + parapet
         }
         if (closed) {
-          const ym = (ya + yb) / 2;
-          boxes.boxW(mx, mz, sl + 0.1, hw * 2 + 1.8, ym + 6.0, 0.7, yaw, TUNNEL_WALL, ST.plain);   // roof
-          if (k % 2 === 0) for (const sd of [-0.5, 0.5]) boxes.boxW(mx + nx * hw * sd, mz + nz * hw * sd, 2.4, 0.5, ym + 5.75, 0.25, yaw, TUNNEL_LAMP, ST.tunnelLamp);
+          const ym = (ya + yb) / 2, along = a0 + t0;
+          boxes.boxW(mx, mz, sl + 0.1, hw * 2 + 3.6, ym + 6.0, 0.7, yaw, TUNNEL_CEIL, ST.tunnelCeil);   // roof
+          const at = (t, off, y) => [x0 + ux * (t0 + t) + nx * off, y + osm.roadY(r, a0 + t0 + t), z0 + uz * (t0 + t) + nz * off];
+          for (const sd of [-1, 1]) {
+            // raised walkway with a painted kerb, between the carriageway and the wall
+            boxes.boxW(mx + nx * (hw + 0.42) * sd, mz + nz * (hw + 0.42) * sd, sl + 0.1, 0.85, lo - 0.1, 0.32, yaw, KERB, ST.plain);
+            boxes.boxW(mx + nx * (hw + 0.03) * sd, mz + nz * (hw + 0.03) * sd, sl + 0.1, 0.08, lo - 0.1, 0.34, yaw, KERB, ST.median);
+            // two continuous rows of lamp fittings, one every 3 m, and amber guidance lights low on the walls
+            for (let t = 1.5; t < sl; t += 3) { const [lx, ly, lz] = at(t, hw * 0.42 * sd, 5.72); boxes.boxW(lx, lz, 1.7, 0.42, ly, 0.22, yaw, TUNNEL_LAMP, ST.tunnelLamp); }
+            for (let t = 6 - (along % 12 + 12) % 12; t < sl; t += 12) if (t >= 0) { const [lx, ly, lz] = at(t, (hw + 0.84) * sd, 0.55); boxes.boxW(lx, lz, 0.32, 0.06, ly, 0.12, yaw, AMBER, ST.glow); }
+          }
+          // a green emergency sign every 80 m, and a pair of jet fans every 120 m
+          if (Math.floor(along / 80) !== Math.floor((along + sl) / 80)) { const t = Math.floor((along + sl) / 80) * 80 - along; const [lx, ly, lz] = at(t, hw + 0.84, 2.3); boxes.boxW(lx, lz, 1.1, 0.08, ly, 0.5, yaw, EXIT_SIGN, ST.glow); }
+          if (Math.floor(along / 120) !== Math.floor((along + sl) / 120)) {
+            const t = Math.floor((along + sl) / 120) * 120 - along;
+            for (const sd of [-1, 1]) { const [lx, ly, lz] = at(t, hw * 0.5 * sd, 4.55); boxes.boxW(lx, lz, 3.4, 1.1, ly, 1.1, yaw, FAN, ST.plain); boxes.boxW(lx, lz, 0.25, 0.5, ly + 1.1, 0.35, yaw, FAN, ST.plain); }
+          }
         } else {
           // the opening in the ground over the trench
           const w = hw + 0.95, ax = x0 + ux * t0, az = z0 + uz * t0, bx = x0 + ux * t1, bz = z0 + uz * t1;
@@ -242,7 +258,7 @@ export class World {
         // portal: a concrete header above the tunnel mouth where the roof begins or ends
         if (prevClosed !== null && closed !== prevClosed) {
           const px = x0 + ux * t0, pz = z0 + uz * t0, y = ya;
-          boxes.boxW(px, pz, 1.2, hw * 2 + 2.6, y + 5.9, -(y + 5.9) + 0.9, yaw, CONCRETE, ST.plain);
+          boxes.boxW(px, pz, 1.2, hw * 2 + 4.4, y + 5.9, -(y + 5.9) + 0.9, yaw, CONCRETE, ST.plain);
         }
         prevClosed = closed;
       }

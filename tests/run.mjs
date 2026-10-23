@@ -211,6 +211,76 @@ await test('a custom tour orders its stops for the shortest trip and can be driv
   await close();
 });
 
+await test('the car turns tightly enough for an exit at 60 km/h, and lane keeping waits for the driver to let go', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(() => {
+    const p = __riyadh.player;
+    __riyadh.setMode('car');
+    p.osm = null;   // open ground: no walls, no lane keeping pull
+    const run = (secs, inp) => { for (let t = 0; t < secs; t += 1 / 60) p.update(1 / 60, { up: true, ...inp }, null); };
+    p.yaw = 0; p.steer = 0; p.speed = 16.7;
+    const y0 = p.yaw; run(2, { up: false, left: true });
+    const turned = p.yaw - y0, kmh = p.speed * 3.6;
+    // full lock at walking pace: about a 6 m circle
+    p.speed = 2; p.steer = 1; const y1 = p.yaw; for (let t = 0; t < 1; t += 1 / 60) p.update(1 / 60, { left: true }, null);
+    const slowRate = p.yaw - y1, radius = 2 / Math.max(1e-6, slowRate);
+    return { turned, kmh, radius };
+  });
+  // at 60 km/h a full lock for two seconds swings the car through more than 60 degrees (a 30 m arc)
+  assert(r.turned > 0.95 && r.kmh > 55 && r.radius > 5 && r.radius < 7.5, JSON.stringify(r));
+  await close();
+});
+
+await test('the touch steering wheel turns the car and springs back when let go', async () => {
+  const { page, close } = await open({ width: 390, height: 780, mobile: true });
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    __riyadh.setMode('car');
+    // the software renderer draws only a few frames a second: wait for frames, not milliseconds
+    const frames = (n) => new Promise((res) => { const f0 = __riyadh.renderer.info.render.frame; const t = () => (__riyadh.renderer.info.render.frame - f0 >= n ? res() : setTimeout(t, 50)); t(); });
+    const w = document.getElementById('touch-wheel'), b = w.getBoundingClientRect(), cx = b.left + b.width / 2, cy = b.top + b.height / 2, R = b.width * 0.42;
+    const ev = (t, a) => w.dispatchEvent(new PointerEvent(t, { pointerId: 9, clientX: cx + Math.cos(a) * R, clientY: cy + Math.sin(a) * R, bubbles: true, pointerType: 'touch', isPrimary: true }));
+    const shown = getComputedStyle(w).display !== 'none' && getComputedStyle(document.getElementById('touch-stick')).display === 'none';
+    ev('pointerdown', -Math.PI / 2);
+    for (let k = 1; k <= 10; k++) ev('pointermove', -Math.PI / 2 + k * 0.157);   // a quarter turn clockwise
+    await frames(4);
+    const held = __riyadh.player.steer, heldDeg = +w.getAttribute('aria-valuenow');
+    ev('pointerup', 0);
+    await frames(12);
+    return { shown, held, heldDeg, after: __riyadh.player.steer, value: +w.getAttribute('aria-valuenow') };
+  });
+  // turning the wheel right steers right; once released it returns to the centre
+  assert(r.shown && r.held < -0.4 && r.heldDeg > 80 && Math.abs(r.after) < 0.1 && Math.abs(r.value) < 8, JSON.stringify(r));
+  await close();
+});
+
+await test('inside a tunnel the daylight fades and the driver\'s seat stays inside the tube', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const R = __riyadh, o = R.osm, p = R.player;
+    const frames = (n) => new Promise((res) => { const f0 = R.renderer.info.render.frame; const t = () => (R.renderer.info.render.frame - f0 >= n ? res() : setTimeout(t, 50)); t(); });
+    // the longest covered tunnel, half way along
+    let best = null;
+    for (const [r, pr] of o.vprof) if (pr.H < 0 && (o.flags(r) & 4)) { const n = o.s.roads[r * 4 + 3]; if (!best || n > best.n) best = { r, n }; }
+    const st = o.s.roads[best.r * 4 + 2], P = o.s.roadPts, i = st + Math.floor(best.n / 2);
+    R.setMode('car');
+    p.pos.x = (P[i * 2] + P[i * 2 + 2]) / 2; p.pos.z = (P[i * 2 + 1] + P[i * 2 + 3]) / 2; p.yaw = Math.atan2(-(P[i * 2 + 3] - P[i * 2 + 1]), P[i * 2 + 2] - P[i * 2]);
+    p.gy = -7; p.gy = p.groundAt(p.pos.x, p.pos.z); p.speed = 0;
+    const sun = R.scene.children.find((c) => c.isDirectionalLight), sun0 = sun.intensity;
+    // the light fades over about a second of game time; slow software frames advance it in small steps
+    for (let k = 0; k < 8 && sun.intensity / sun0 > 0.2; k++) await frames(12);
+    const dimmed = sun.intensity / sun0;
+    R.setCamera('pov'); await frames(3);
+    const eye = R.camera.position.y;
+    R.setCamera('chase');
+    return { gy: p.gy, dimmed, eye };
+  });
+  assert(r.gy < -5 && r.dimmed < 0.3 && r.eye < r.gy + 2.5 && r.eye > r.gy, JSON.stringify(r));
+  await close();
+});
+
 for (const [w, h] of [[390, 667], [844, 390], [360, 640]]) {
   await test(`guide, tour and tourist panels fit a ${w}x${h} screen`, async () => {
     const { page, close } = await open({ width: w, height: h, mobile: true });
