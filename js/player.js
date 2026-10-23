@@ -214,7 +214,7 @@ export class Player {
       // turning circle: 5.8 m at walking pace (a Land Cruiser), widened by tyre grip (7 m/s2 sideways) at speed
       const radius = Math.max(5.8, (v * v) / 7);
       this.yaw += this.steer * dt * (v / radius) * Math.sign(this.speed || 1);
-      if (Math.abs(turn) < 0.05 && v > 6 && this.osm && this.gy < 2) this.laneKeep(dt);
+      if (Math.abs(turn) < 0.12 && v > 6 && this.osm && this.gy < 2) this.laneKeep(dt);
       this.move(dt);
       const m = this.models.car;
       this.gy += (this.groundAt(p.x, p.z) - this.gy) * Math.min(1, dt * 10);

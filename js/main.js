@@ -249,6 +249,7 @@ const FOLLOW = [
   { id: 'top', ar: 'علوي' }
 ];
 const CAMS = [...FOLLOW, ...SCENIC, { id: 'drone', ar: 'المخرج الآلي' }];
+let camYaw = 0, camGy = 0;
 let camId = 'chase', camT = 0, directorIdx = 0, directorT = 0, lookIdle = 0;
 const orbitCtl = { yaw: 0, pitch: 0.18, zoom: 1 };
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
@@ -298,9 +299,13 @@ function updateCamera(dt) {
     dist = (player.mode === 'person' ? 5.5 : player.mode === 'car' ? 11 : 30) * orbitCtl.zoom * (player.gy < -2 && player.mode !== 'heli' ? 0.75 : 1);
     up = 0; look = player.mode === 'person' ? 1.5 : player.mode === 'car' ? 1.6 : 2.5;
   }
-  const yaw = player.yaw + orbitCtl.yaw + Math.PI;
+  // the camera heading trails the car's heading; position is then rigid to the car, so the car never shakes on screen
+  const dy = Math.atan2(Math.sin(player.yaw - camYaw), Math.cos(player.yaw - camYaw));
+  camYaw = Math.abs(dy) > 2.5 ? player.yaw : camYaw + dy * (1 - Math.exp(-dt * (player.mode === 'car' ? 4 : 6)));
+  const yaw = camYaw + orbitCtl.yaw + Math.PI;
   const pitch = id === 'top' ? 1.1 : orbitCtl.pitch + (player.mode === 'heli' ? 0.12 : 0);
-  const base = player.mode === 'heli' ? player.alt : player.gy + (player.mode === 'person' ? player.alt : 0);
+  camGy += (player.gy - camGy) * Math.min(1, dt * 4);   // ramps and bridges ease the camera height
+  const base = player.mode === 'heli' ? player.alt : camGy + (player.mode === 'person' ? player.alt : 0);
   const target = new THREE.Vector3(p.x, base + look, p.z);
   const want = new THREE.Vector3(
     p.x + Math.cos(yaw) * Math.cos(pitch) * dist,
@@ -310,9 +315,13 @@ function updateCamera(dt) {
   want.y = Math.max(want.y, 0.6 + Math.min(0, player.gy));
   if (player.mode !== 'heli' && player.gy < -2) { want.y = Math.min(want.y, player.gy + 4.6); }
   const k = 1 - Math.exp(-dt * (player.mode === 'car' ? 7 : 5));
-  camPos.lerp(want, camPos.distanceTo(want) > 300 ? 1 : k);
-  if (player.mode === 'heli') camPos.y += (want.y - camPos.y) * Math.min(1, k * 3);
-  camLook.lerp(target, camLook.distanceTo(target) > 300 ? 1 : Math.min(1, k * 1.6));
+  if (player.mode === 'heli' || id === 'top' || camPos.distanceTo(want) > 300) {
+    camPos.lerp(want, camPos.distanceTo(want) > 300 ? 1 : k);
+    if (player.mode === 'heli') camPos.y += (want.y - camPos.y) * Math.min(1, k * 3);
+    camLook.lerp(target, camLook.distanceTo(target) > 300 ? 1 : Math.min(1, k * 1.6));
+  } else {
+    camPos.copy(want); camLook.copy(target);   // rigid to the car: nothing to shake
+  }
   camera.position.copy(camPos);
   camera.lookAt(camLook);
 }
@@ -378,7 +387,9 @@ if (touch) {
     let dx = (e.clientX - c0.x) / c0.r, dy = (e.clientY - c0.y) / c0.r;
     const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
     knob.style.transform = `translate(${dx * 38}px, ${dy * 38}px)`;
-    input.ax = -dx; input.ay = -dy;
+    // dead zone and a soft curve: small finger wobble must not steer
+    const shape = (v, dz) => { const a = Math.max(0, (Math.abs(v) - dz) / (1 - dz)); return Math.sign(v) * a * (0.35 + 0.65 * a); };
+    input.ax = -shape(dx, 0.18); input.ay = -shape(dy, 0.12);
   };
   stick.addEventListener('pointermove', move);
   const end = (e) => { if (e.pointerId !== sid) return; sid = null; input.ax = input.ay = 0; knob.style.transform = ''; };
@@ -764,9 +775,14 @@ function updateHud(dt, fps) {
 // ---------- main loop ----------
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
-function frame() {
+let lastTs = null, dtSmooth = 1 / 60;
+function frame(ts) {
+  // frame time from the display's own timestamps, smoothed: phones report noisy gaps, which shake the camera
+  const raw = Math.min(0.25, lastTs === null || ts === undefined ? clock.getDelta() : (ts - lastTs) / 1000);
+  if (ts !== undefined) lastTs = ts;
+  dtSmooth = raw > dtSmooth * 2.5 ? raw : dtSmooth + (raw - dtSmooth) * 0.15;   // real hitches pass through, jitter is averaged out
   // simulate in steps of at most 1/30 s, so distance always matches real time even at low frame rates
-  const frameDt = Math.min(0.25, clock.getDelta());
+  const frameDt = Math.max(1e-4, dtSmooth);
   const subN = Math.max(1, Math.ceil(frameDt / (1 / 30)));
   const dt = frameDt / subN;
   fpsAvg += (1 / Math.max(frameDt, 1e-3) - fpsAvg) * 0.05;
