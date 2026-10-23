@@ -22,7 +22,7 @@ const PAL = {
 const DOME = ['#f2efe8', '#e9e4d6', '#7fa38a', '#c9b48a', '#9fb3c2'].map(col);
 const pal = (st, seed) => { const p = PAL[st] || PAL[3]; return p[Math.floor(seed * p.length) % p.length]; };
 const WHITE = col('#f4f4f0'), POLE = col('#6d7176'), LAMP = col('#fff1cf'), DECK = col('#d7d3ca');
-const ART_LIGHT = new THREE.Color(1.0, 0.9, 0.74).multiplyScalar(0.2), LOCAL_LIGHT = new THREE.Color(1.0, 0.7, 0.4).multiplyScalar(0.26);
+const ART_LIGHT = new THREE.Color(1.0, 0.9, 0.74).multiplyScalar(0.42), LOCAL_LIGHT = new THREE.Color(1.0, 0.72, 0.42).multiplyScalar(0.48);
 
 const roadMat = makeRoadMaterial(), walkMat = skipHoles(makeWalkMaterial()), landMat = skipHoles(makeLandMaterial());
 const CONCRETE = col('#b9b2a6'), TUNNEL_WALL = col('#cfc9bd'), TUNNEL_LAMP = col('#fff4dc');
@@ -397,7 +397,7 @@ export class World {
           boxes.boxW((lx + ax) / 2, (lz + az) / 2, 0.14, 2.6, y + H, 0.14, yaw, POLE, ST.plain);
           boxes.boxW(ax, az, 0.6, 1.0, y + H - 0.25, 0.22, yaw, LAMP, ST.lamp);
           const lpx = px + nx * (off - 3.5) * sd, lpz = pz + nz * (off - 3.5) * sd;
-          lights.boxW(lpx, lpz, major ? 30 : 22, major ? 30 : 22, y + 0.15, 1, 0, major ? ART_LIGHT : LOCAL_LIGHT, 0);
+          lights.boxW(lpx, lpz, major ? 38 : 28, major ? 38 : 28, y + 0.15, 1, 0, major ? ART_LIGHT : LOCAL_LIGHT, 0);
         }
         // palms between the lamps on the big roads (in the median of dual carriageways)
         if (cls >= RC.trunk && cls <= RC.secondary && y < 0.5) {

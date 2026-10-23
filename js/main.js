@@ -52,6 +52,9 @@ let envRT = null;
 
 const hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
 scene.add(hemi);
+// at night a soft warm light rides with the visitor, standing in for the street lamps all around
+const nearGlow = new THREE.PointLight('#ffe4c4', 0, 46, 1.4);
+scene.add(nearGlow);
 const sun = new THREE.DirectionalLight(0xffffff, 3);
 sun.castShadow = true;
 sun.shadow.mapSize.set(touch ? 1024 : 2048, touch ? 1024 : 2048);
@@ -72,7 +75,7 @@ scene.add(ground);
 const PRESETS = {
   noon: { ar: 'الظهيرة', sunEl: 70, sunAz: 165, sun: '#fff2df', sunI: 3.1, hs: '#c3d5e6', hg: '#b8956a', hi: 0.95, top: '#5b8fca', horizon: '#dcd6c4', bottom: '#c9b08a', glow: '#fff1d0', fog: '#d6cdb9', near: 700, far: 12000, night: 0, exp: 0.9, stars: 0, bloom: 0.08, env: 1.0 },
   maghrib: { ar: 'المغرب', sunEl: 4.5, sunAz: 258, sun: '#ffa65e', sunI: 2.6, hs: '#7d8db2', hg: '#a2774f', hi: 0.75, top: '#2d4d88', horizon: '#f2a25a', bottom: '#8a6a4c', glow: '#ff9545', fog: '#d4956a', near: 500, far: 9500, night: 0.45, exp: 1.05, stars: 0, bloom: 0.38, env: 0.6 },
-  night: { ar: 'الليل', sunEl: 38, sunAz: 115, sun: '#9fb4e0', sunI: 0.25, hs: '#1e2840', hg: '#2c2117', hi: 0.28, top: '#030712', horizon: '#2a2232', bottom: '#1a140f', glow: '#5b3a22', fog: '#1f1b22', near: 400, far: 9000, night: 1, exp: 1.1, stars: 1, bloom: 0.62, env: 0.25 },
+  night: { ar: 'الليل', sunEl: 38, sunAz: 115, sun: '#a9bde6', sunI: 0.45, hs: '#34446a', hg: '#4a3524', hi: 0.62, top: '#030712', horizon: '#2a2232', bottom: '#1a140f', glow: '#5b3a22', fog: '#1f1b22', near: 400, far: 9000, night: 1, exp: 1.3, stars: 1, bloom: 0.62, env: 0.4 },
   haboob: { ar: 'عاصفة رملية', sunEl: 42, sunAz: 205, sun: '#ffc78a', sunI: 0.95, hs: '#d39a5a', hg: '#9a6a3c', hi: 1.15, top: '#b67b44', horizon: '#c98c50', bottom: '#a8733f', glow: '#e0a060', fog: '#c3854b', near: 15, far: 750, night: 0.3, exp: 1.0, stars: 0, bloom: 0.22, env: 0.5, dust: 1 }
 };
 let preset = PRESETS.maghrib, presetId = 'maghrib';
@@ -851,7 +854,12 @@ function frame(ts) {
     dust.rotation.y += frameDt * 0.15;
   }
   // headlights in the dark
-  player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, U.uNight.value - 0.4) * 420 : 0;
+  player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, U.uNight.value - 0.4) * 900 : 0;
+  {
+    const n = Math.max(0, U.uNight.value - 0.3) / 0.7, h = player.mode === 'heli' ? 0 : player.mode === 'car' ? 7 : 5;
+    nearGlow.intensity = player.mode === 'heli' ? 0 : n * (player.mode === 'car' ? 65 : 42);
+    nearGlow.position.set(player.pos.x - Math.cos(player.yaw) * 3, player.height - (player.mode === 'car' ? 1.3 : 1.6) + h, player.pos.z + Math.sin(player.yaw) * 3);
+  }
   if (composer) composer.render(); else renderer.render(scene, camera);
   mmTimer -= frameDt;
   if (mmTimer <= 0 && !document.body.classList.contains('hud-hidden')) { mmTimer = 0.1; drawMinimap(); }

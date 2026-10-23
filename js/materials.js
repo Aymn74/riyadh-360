@@ -407,7 +407,7 @@ uniform float uNight; varying vec2 vUv; varying vec3 vCol;
 void main() {
 #include <logdepthbuf_fragment>
   float r = length(vUv);
-  float a = pow(max(0.0, 1.0 - r), 2.0) * 0.8 + 0.25 * pow(max(0.0, 1.0 - r * 2.5), 3.0);
+  float a = pow(max(0.0, 1.0 - r), 1.6) * 0.8 + 0.3 * pow(max(0.0, 1.0 - r * 2.5), 3.0);
   gl_FragColor = vec4(vCol * a * uNight, 1.0);
 }`
 });

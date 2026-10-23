@@ -180,9 +180,9 @@ export function buildCar() {
   plate.position.set(-2.53, 0.8, 0); plate.rotation.y = -Math.PI / 2;
   g.add(plate);
   // headlight cones at night
-  const spot = new THREE.SpotLight('#fff3dc', 0, 90, 0.5, 0.5, 1.2);
+  const spot = new THREE.SpotLight('#fff3dc', 0, 140, 0.62, 0.45, 1.1);
   spot.position.set(2.4, 1.0, 0);
-  spot.target.position.set(20, 0, 0);
+  spot.target.position.set(24, -0.5, 0);
   g.add(spot, spot.target);
   g.userData.spot = spot;
   g.userData.lights = { head, tail };
