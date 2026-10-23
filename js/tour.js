@@ -288,6 +288,8 @@ export class Tour {
     this.pos = new THREE.Vector3(); this.look = new THREE.Vector3();
   }
   get ui() { return UI[this.lang]; }
+  // a paused engine stays paused through cancel(): resume it first, or the next utterance is silent
+  hush() { if (!this.synth) return; if (this.synth.paused) this.synth.resume(); this.synth.cancel(); }
   voiceFor(lang) {
     if (!this.synth) return null;
     const L = LANGS.find((l) => l.id === lang), vs = this.synth.getVoices();
@@ -297,7 +299,7 @@ export class Tour {
   setNarrator(on) {
     this.narrator = on;
     try { localStorage.setItem('riyadh-narrator', on ? 'on' : 'off'); } catch (e) { /* private mode */ }
-    if (!on && !this.active) this.synth?.cancel();
+    if (!on && !this.active) this.hush();
   }
   setLang(id) {
     if (!LANGS.find((l) => l.id === id)) return;
@@ -311,7 +313,7 @@ export class Tour {
   speakFree(text, interrupt) {
     if (!this.synth || !this.narrator || this.active || !text) return false;
     if (!interrupt && (this.synth.speaking || this.synth.pending)) return false;
-    this.synth.cancel();
+    this.hush();
     const L = LANGS.find((l) => l.id === this.lang), v = this.voiceFor(this.lang);
     for (const t of text.split(/(?<=[.!?。؟])\s*/).filter((x) => x.trim())) {
       const u = new SpeechSynthesisUtterance(t);
@@ -344,8 +346,10 @@ export class Tour {
   }
   open(fromPos, fromLook) {
     this.from = fromPos.clone(); this.fromLook = fromLook.clone();
+    if (this.el.hidden) this.opener = document.activeElement;
     this.phase = 'setup'; this.el.hidden = false;
     this.renderSetup();
+    this.el.querySelector('[data-a="go"]')?.focus({ preventScroll: true });
   }
   renderSetup() {
     const u = this.ui, b = B[this.lang], L = LANGS.find((l) => l.id === this.lang);
@@ -367,7 +371,7 @@ export class Tour {
     this.el.querySelector('select').onchange = (e) => { this.lang = e.target.value; keep(); this.renderSetup(); };
     this.el.querySelectorAll('[data-theme-id]').forEach((x) => (x.onclick = () => { this.theme = x.dataset.themeId; keep(); this.renderSetup(); }));
     this.el.querySelectorAll('[data-dur]').forEach((x) => (x.onclick = () => { this.dur = x.dataset.dur; keep(); this.renderSetup(); }));
-    this.el.querySelector('[data-a="cancel"]').onclick = () => { this.el.hidden = true; this.phase = null; };
+    this.el.querySelector('[data-a="cancel"]').onclick = () => { this.el.hidden = true; this.phase = null; if (this.opener && document.contains(this.opener)) this.opener.focus({ preventScroll: true }); };
     this.el.querySelector('[data-a="go"]').onclick = () => { this.stops = this.plan(); this.start(this.from, this.fromLook); };
   }
   // ---- panel
@@ -390,7 +394,7 @@ export class Tour {
       try { localStorage.setItem('riyadh-tour-lang', this.lang); } catch (err) { /* private mode */ }
       this.say(this.caption);   // repeat the current part in the new language
     };
-    this.el.querySelector('[data-a="mute"]').onclick = () => { this.muted = !this.muted; if (this.muted) this.synth?.cancel(); else this.say(this.caption); };
+    this.el.querySelector('[data-a="mute"]').onclick = () => { this.muted = !this.muted; if (this.muted) this.hush(); else this.say(this.caption); };
     this.el.querySelector('[data-a="pause"]').onclick = () => { this.paused = !this.paused; if (this.paused) this.synth?.pause(); else this.synth?.resume(); this.render(); this.setText(); };
     this.el.querySelector('[data-a="next"]').onclick = () => this.advance();
     // ×1 → ×1.5 → ×2: faster flights, shorter pauses and a quicker narrator (from the next sentence)
@@ -406,11 +410,12 @@ export class Tour {
   // ---- narration
   say(text) {
     this.caption = text;
+    this.paused = false;   // a new line (a language change, sound back on) also resumes the tour
     this.render();
     this.spoken = false; this.sayT = 0;
     // without a voice, hold the subtitle for a reading time
     this.minHold = Math.max(4, text[this.lang].length / (this.lang === 'zh' ? 6 : 18));
-    this.synth?.cancel();
+    this.hush();
     if (!this.synth || this.muted) { this.spoken = true; return; }
     // one utterance per sentence: some browsers cut long utterances off after about 15 seconds
     const parts = text[this.lang].split(/(?<=[.!?。؟])\s*/).filter((t) => t.trim());
@@ -435,7 +440,7 @@ export class Tour {
   }
   stop(finished) {
     if (!this.active) return;
-    this.active = false; this.synth?.cancel(); this.token = null;
+    this.active = false; this.hush(); this.token = null;
     this.el.hidden = true; document.body.classList.remove('touring');
     this.onEnd?.(this.stops[Math.min(this.i, this.stops.length - 1)], finished);
   }

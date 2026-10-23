@@ -1,0 +1,26 @@
+name: tests
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: Python tools compile and parse geometry correctly
+        run: |
+          python -m py_compile tools/*.py
+          python -I tests/test_gpkg.py
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: JavaScript syntax
+        run: for f in js/*.js tests/*.mjs; do node --check "$f"; done
+      - name: Browser tests
+        working-directory: tests
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          node run.mjs

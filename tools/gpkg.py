@@ -23,9 +23,13 @@ def _wkb(b, o):
     e = '<' if le else '>'
     t = struct.unpack_from(e + 'I', b, o + 1)[0]
     o += 5
-    base = t % 1000
-    dims = 3 if (t // 1000) in (1, 2) or (t & 0x80000000) else 2
-    base &= 0xFF
+    # ISO WKB marks Z/M as +1000 / +2000 / +3000; EWKB as the high flag bits
+    code = t & 0x0FFFFFFF
+    iso = code // 1000
+    has_z = iso in (1, 3) or bool(t & 0x80000000)
+    has_m = iso in (2, 3) or bool(t & 0x40000000)
+    dims = 2 + has_z + has_m
+    base = code % 1000
     if base == 1:
         pt = struct.unpack_from(e + 'd' * dims, b, o)
         return ('Point', pt[:2]), o + 8 * dims

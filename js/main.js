@@ -358,7 +358,7 @@ function setCamera(id) {
 // ---------- input ----------
 const keys = {};
 const input = { up: false, down: false, left: false, right: false, boost: false, jump: false, descend: false, ax: 0, ay: 0, az: 0 };
-const typing = () => document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+const typing = () => document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 addEventListener('keydown', (e) => {
   if (typing()) return;
   keys[e.code] = true;
@@ -373,6 +373,7 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyG') guide?.openList();
   if (k === 'Escape' && tour?.active) tour.stop();
   if (k === 'Escape' && tourist && !tourist.el.hidden) tourist.toggle(false);
+  if (k === 'Escape' && guide && !guide.card.hidden) guide.hideCard();
   if (k === 'KeyP') tourist?.toggle();
   if (k === 'KeyT') { const ids = Object.keys(PRESETS); applyPreset(ids[(ids.indexOf(presetId) + 1) % ids.length]); }
   if (k === 'Escape' && !$('fullmap-modal').hidden) toggleMap(false);
@@ -448,7 +449,9 @@ document.querySelectorAll('.touch-action').forEach((b) => {
   b.addEventListener('pointerup', () => set(false)); b.addEventListener('pointerleave', () => set(false)); b.addEventListener('pointercancel', () => set(false));
 });
 // a clicked HUD button must not keep keyboard focus, or Space would press it again instead of flying
-document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.closest('#fullmap-modal')) b.blur(); });
+// a button clicked with the mouse gives its focus back, or Space would press it again instead of flying;
+// a button activated from the keyboard (detail 0) keeps it, so keyboard users do not lose their place
+document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && e.detail > 0 && !b.closest('#fullmap-modal')) b.blur(); });
 
 function startTour() {
   if (!tour) return;

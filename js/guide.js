@@ -293,8 +293,8 @@ export class Guide {
       <div class="g-chips" role="group" aria-label="الفئات">${Object.entries(CATS).map(([k, [ar]]) => `<button type="button" class="g-chip" data-cat="${k}" aria-pressed="${k === this.cat}">${ar}</button>`).join('')}</div>
       <div class="g-chips g-sub" role="group" aria-label="التصفية"></div>
       <div id="guide-list"></div>`;
-    this.card.querySelector('.g-tour').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.startTour?.(); });
-    this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
+    this.card.querySelector('.g-tour').addEventListener('click', () => { this.hideCard(false); this.clear(); this.startTour?.(); });
+    this.card.querySelector('.g-x').addEventListener('click', () => this.hideCard());
     const q = this.card.querySelector('#guide-q');
     q.addEventListener('input', () => { this.q = q.value; this.fillList(); });
     q.addEventListener('keydown', (e) => e.stopPropagation());   // typing must not drive the car
@@ -304,7 +304,7 @@ export class Guide {
       this.fillList();
     }));
     this.listExtras?.(this.card);
-    this.card.hidden = false;
+    this.showCard();
     this.fillList();
   }
   async fillList() {
@@ -349,10 +349,22 @@ export class Guide {
     const p = this.player.pos, d = Math.hypot(g.x - p.x, g.z - p.z);
     this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${esc(g.ar)}</h3><div class="en">${g.en !== g.ar ? esc(g.en) : ''}</div><p>${esc(g.desc || (g.tag ? g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') + ' من خريطة OpenStreetMap.' : ''))}</p>
       <div class="row"><button class="g-btn g-go" type="button" data-a="go">خذني إليه</button><button class="g-btn g-alt" type="button" data-a="jump">انتقال فوري</button><span class="dist">على بعد ${fmtDist(d)}</span></div>`;
-    this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
-    this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.card.hidden = true; this.go(g); });
-    this.card.querySelector('[data-a="jump"]').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.teleport(g); });
+    this.card.querySelector('.g-x').addEventListener('click', () => this.hideCard());
+    this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.hideCard(); this.go(g); });
+    this.card.querySelector('[data-a="jump"]').addEventListener('click', () => { this.hideCard(); this.clear(); this.teleport(g); });
+    this.showCard();
+  }
+  // the card takes the focus when it opens and gives it back to whatever opened it
+  showCard() {
+    if (this.card.hidden) this.opener = document.activeElement;
     this.card.hidden = false;
+    this.card.setAttribute('role', 'dialog');
+    this.card.querySelector('.g-x')?.focus({ preventScroll: true });
+  }
+  hideCard(restore = true) {
+    this.card.hidden = true;
+    if (restore && this.opener && document.contains(this.opener)) this.opener.focus({ preventScroll: true });
+    this.opener = null;
   }
   async go(g) {
     this.dest = g; this.route = null; this.build([]);

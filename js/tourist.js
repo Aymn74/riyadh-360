@@ -30,7 +30,9 @@ export function prayerTimes(date, lat = 24.7136, lon = 46.6753, tz = 3) {
   for (let k = 0; k < 2; k++) h = { fajr: angleTime(18.5, h.fajr / 24, true), sunrise: angleTime(0.833, h.sunrise / 24, true), dhuhr: noon(h.dhuhr / 24), asr: asr(h.asr / 24), maghrib: angleTime(0.833, h.maghrib / 24, false) };
   const local = (x) => x + tz - lon / 15;
   const out = { fajr: local(h.fajr), sunrise: local(h.sunrise), dhuhr: local(h.dhuhr) + 1 / 60, asr: local(h.asr), maghrib: local(h.maghrib) };
-  out.isha = out.maghrib + 1.5;
+  // Isha is 90 minutes after Maghrib, and 120 during Ramadan (the Umm al-Qura rule)
+  out.ramadan = hijriMonth(date) === 9;
+  out.isha = out.maghrib + (out.ramadan ? 2 : 1.5);
   return out;   // hours of the Riyadh day
 }
 const PRAYER_AR = { fajr: 'الفجر', sunrise: 'الشروق', dhuhr: 'الظهر', asr: 'العصر', maghrib: 'المغرب', isha: 'العشاء' };
@@ -39,6 +41,13 @@ const AR = (s) => String(s).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
 const hm = (h) => { const t = Math.round(h * 60), H = Math.floor(t / 60) % 24, Mi = t % 60; return AR((H % 12 || 12) + ':' + String(Mi).padStart(2, '0')) + (H < 12 ? ' ص' : ' م'); };
 const fmtDist = (m) => (m < 1000 ? AR(Math.round(m / 10) * 10) + ' م' : AR((m / 1000).toFixed(1)) + ' كم');
 // Riyadh's clock, whatever the visitor's own time zone
+// the month of the Umm al-Qura calendar, as the browser knows it (null where that calendar is unsupported)
+export function hijriMonth(date) {
+  try {
+    const m = +new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', { month: 'numeric', timeZone: 'Asia/Riyadh' }).format(date);
+    return m >= 1 && m <= 12 ? m : null;
+  } catch (e) { return null; }
+}
 function riyadhNow() {
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(new Date());
   const v = Object.fromEntries(parts.map((p) => [p.type, p.value]));
@@ -105,7 +114,8 @@ export class TouristPanel {
       if (Math.abs(a) / 2 > 8000) this.parks.push({ x: x / n, z: z / n, area: Math.abs(a) / 2 });
     }
     this.view = 'home';
-    setInterval(() => { if (!this.el.hidden && this.view === 'home') this.renderHome(); }, 30000);
+    // the clock and prayer line refresh every half minute, but never under a keyboard user's focus
+    setInterval(() => { if (!this.el.hidden && this.view === 'home' && !this.el.contains(document.activeElement)) this.renderHome(); }, 30000);
   }
   // the guide reports each landmark the visitor reaches
   stamp(key) {
@@ -115,7 +125,13 @@ export class TouristPanel {
     if (this.visited.size === GUIDE.length) this.guide.note('جواز الرياض مكتمل', `زرت كل معالم الدليل (${AR(GUIDE.length)} معلماً). مبروك!`);
     if (!this.el.hidden && this.view === 'home') this.renderHome();
   }
-  toggle(open) { const show = open ?? this.el.hidden; this.el.hidden = !show; if (show) { this.view = 'home'; this.renderHome(); } }
+  toggle(open) {
+    const show = open ?? this.el.hidden;
+    if (show && this.el.hidden) this.opener = document.activeElement;
+    this.el.hidden = !show;
+    if (show) { this.view = 'home'; this.renderHome(); this.el.querySelector('[data-a="close"]')?.focus({ preventScroll: true }); }
+    else if (this.opener && document.contains(this.opener)) { this.opener.focus({ preventScroll: true }); this.opener = null; }
+  }
   near(list, n) { const p = this.player.pos; return list.map((q) => ({ ...q, d: Math.hypot(q.x - p.x, q.z - p.z) })).sort((a, b) => a.d - b.d).slice(0, n); }
   header(title) {
     const { hours } = riyadhNow();
@@ -145,7 +161,7 @@ export class TouristPanel {
       <div class="sec">جواز الرياض · ${AR(this.visited.size)} من ${AR(GUIDE.length)}</div>
       <div class="stamps" title="اقترب من أي معلم ليُختم جوازك">${GUIDE.map((g, i) => `<i class="${this.visited.has(g.key) ? 'got' : ''}" title="${g.ar}">${AR(i + 1)}</i>`).join('')}</div>
       <div class="phrase"><span class="sec" style="margin:0">عبارة اليوم · Phrase of the day</span><span class="ar">${ph[0]}</span><span class="tr">${ph[1]} — ${ph[2]}</span><button type="button" data-go="say">🔊 استمع</button></div>
-      <div class="muted">مواقيت الصلاة محسوبة على الجهاز بطريقة أم القرى، وقد تختلف دقيقة أو دقيقتين عن التقويم الرسمي.</div>`;
+      <div class="muted">مواقيت تقريبية محسوبة على الجهاز بطريقة أم القرى${pt.ramadan ? '، والعشاء بعد المغرب بساعتين في رمضان' : ''}. للمواعيد الدقيقة راجع تقويم أم القرى الرسمي.</div>`;
     this.wire();
   }
   renderList(title, items) {
@@ -166,7 +182,7 @@ export class TouristPanel {
     if (a === 'tour') { this.toggle(false); this.openTour(); return; }
     if (a === 'say') {
       const ph = PHRASES[Math.floor(Date.now() / 86400000) % PHRASES.length], s = window.speechSynthesis;
-      if (s) { s.cancel(); const u = new SpeechSynthesisUtterance(ph[0].replace('…', '')); u.lang = 'ar-SA'; u.rate = 0.85; const v = s.getVoices().find((x) => x.lang.startsWith('ar')); if (v) u.voice = v; s.speak(u); }
+      if (s) { if (s.paused) s.resume(); s.cancel(); const u = new SpeechSynthesisUtterance(ph[0].replace('…', '')); u.lang = 'ar-SA'; u.rate = 0.85; const v = s.getVoices().find((x) => x.lang.startsWith('ar')); if (v) u.voice = v; s.speak(u); }
       return;
     }
     if (a === 'mosque') {

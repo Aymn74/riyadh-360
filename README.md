@@ -6,13 +6,13 @@
 
 [![Open it live](https://img.shields.io/badge/%E2%96%B6%20Open%20it%20live-%D8%A7%D9%81%D8%AA%D8%AD%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9-1f9d63?style=for-the-badge)](https://aymn74.github.io/slop-riyadh/)
 
-![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555)
+![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555) [![tests](https://github.com/Aymn74/slop-riyadh/actions/workflows/test.yml/badge.svg)](https://github.com/Aymn74/slop-riyadh/actions/workflows/test.yml) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <a href="https://aymn74.github.io/slop-riyadh/"><img src="docs/hero.jpg" alt="Kingdom Centre and the Olaya towers at maghrib" width="100%"></a>
 
 <sub>Kingdom Centre and the towers of Olaya at maghrib · برج المملكة وأبراج العليا وقت المغرب</sub>
 
-[العربية](#بالعربية) · [English](#in-english) · [Screenshots](#screenshots) · [Controls](#controls) · [Data](#data) · [Files](#files)
+[العربية](#بالعربية) · [English](#in-english) · [Screenshots](#screenshots) · [Controls](#controls) · [Data](#data) · [Files](#files) · [Tests](#tests)
 
 </div>
 
@@ -143,8 +143,28 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
 
 To run it locally, serve the folder with any static server (for example `npx serve .`) and open `index.html`.
 
+## Tests
+
+The tests open the full site in a browser and check what a visitor relies on: map names shown as text and never
+run, recovery after failed downloads, routes by car and on foot to every landmark, panels that fit small phone
+screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, and narration after a pause.
+They run on every push (GitHub Actions, `.github/workflows/test.yml`).
+
+```
+cd tests && npm install && npx playwright install chromium
+node run.mjs                     # all browser tests; ONLY="routes" node run.mjs runs the ones whose name matches
+python3 -I test_gpkg.py          # the GeoPackage reader
+```
+
+To rebuild the data, install the Python requirements first: `pip install -r tools/requirements.txt`.
+
+## License
+
+The code is under the [MIT License](LICENSE). The map data in `data/` is © OpenStreetMap contributors under the
+[Open Database License](https://opendatacommons.org/licenses/odbl/).
+
 ## Credits
 
 - Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL, extract by [BBBike](https://extract.bbbike.org/).
 - Built with [three.js](https://threejs.org/). The idea comes from [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork).
-- Prayer times use the Umm al-Qura parameters, computed in the browser.
+- Prayer times use the Umm al-Qura parameters, computed in the browser (Isha 90 minutes after Maghrib, 120 in Ramadan).

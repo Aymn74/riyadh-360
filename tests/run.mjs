@@ -133,6 +133,44 @@ await test('guidance switches network with the travel mode, and says so when the
   await page.waitForFunction(() => /لا يوجد طريق/.test(document.querySelector('#guide-nav span').textContent), null, { timeout: 30000 });
 });
 
+await test('Isha moves to two hours after Maghrib in Ramadan', async () => {
+  const { page } = await open({ width: 640, height: 400 });
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const { prayerTimes } = await import('./js/tourist.js');
+    const gap = (d) => { const t = prayerTimes(new Date(d)); return Math.round((t.isha - t.maghrib) * 60); };
+    return { ramadan: gap('2026-03-01T12:00:00Z'), other: gap('2026-10-23T12:00:00Z') };
+  });
+  assert(r.ramadan === 120 && r.other === 90, JSON.stringify(r));
+});
+
+await test('narration still speaks after a tour was paused and then ended', async () => {
+  // a stand-in speech engine that behaves like Chrome's: a paused engine stays paused through cancel()
+  const { page } = await open({
+    width: 640, height: 400,
+    init: () => {
+      const fake = { paused: false, speaking: false, pending: false, spoken: [], getVoices: () => [], onvoiceschanged: null,
+        speak(u) { if (!this.paused) this.spoken.push(u.text); setTimeout(() => u.onend && u.onend(), 5); },
+        cancel() {}, pause() { this.paused = true; }, resume() { this.paused = false; } };
+      Object.defineProperty(window, 'speechSynthesis', { value: fake, configurable: true });
+      window.SpeechSynthesisUtterance = function (t) { this.text = t; };
+    }
+  });
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const t = __riyadh.tour, s = window.speechSynthesis;
+    __riyadh.startTour(); t.stops = t.plan('history', 'short'); t.start(t.from, t.fromLook);
+    t.el.querySelector('[data-a="pause"]').click();
+    t.stop();
+    s.spoken.length = 0;
+    __riyadh.startTour(); t.stops = t.plan('history', 'short'); t.start(t.from, t.fromLook);
+    await new Promise((res) => setTimeout(res, 50));
+    t.stop();
+    return { paused: s.paused, spoken: s.spoken.length };
+  });
+  assert(!r.paused && r.spoken > 0, JSON.stringify(r));
+});
+
 for (const [w, h] of [[390, 667], [844, 390], [360, 640]]) {
   await test(`guide, tour and tourist panels fit a ${w}x${h} screen`, async () => {
     const { page, close } = await open({ width: w, height: h, mobile: true });
