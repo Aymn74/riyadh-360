@@ -15,6 +15,7 @@ import { World } from './world.js';
 import { Cars } from './cars.js';
 import { Guide } from './guide.js';
 import { Tour, LANGS, ARRIVED } from './tour.js';
+import { TouristPanel } from './tourist.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t, p) => { $('loading-status').textContent = t; if (p !== undefined) $('loading-progress').style.width = (p * 100).toFixed(0) + '%'; };
@@ -367,6 +368,8 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyH') toggleHud();
   if (k === 'KeyG') guide?.openList();
   if (k === 'Escape' && tour?.active) tour.stop();
+  if (k === 'Escape' && tourist && !tourist.el.hidden) tourist.toggle(false);
+  if (k === 'KeyP') tourist?.toggle();
   if (k === 'KeyT') { const ids = Object.keys(PRESETS); applyPreset(ids[(ids.indexOf(presetId) + 1) % ids.length]); }
   if (k === 'Escape' && !$('fullmap-modal').hidden) toggleMap(false);
   if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(k)) e.preventDefault();
@@ -810,7 +813,7 @@ function updateHud(dt, fps) {
 }
 
 // ---------- main loop ----------
-let guide = null, tour = null, lastDistrict = '', lastDistrictT = 0;
+let guide = null, tour = null, tourist = null, lastDistrict = '', lastDistrictT = 0;
 const IDLE = { ax: 0, ay: 0, az: 0 };
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
@@ -884,6 +887,7 @@ async function boot() {
     } });
     // the narrator speaks the guide's notes, in the tour's language
     const narrate = (g, arrived) => {
+      if (arrived || (tourist && Math.hypot(player.pos.x - tourist.spawn.x, player.pos.z - tourist.spawn.z) > 150)) tourist?.stamp(g.key);   // not for the spot the visitor starts on
       const story = tour.storyFor(g.key) || (tour.lang === 'ar' ? g.desc : '');
       const name = tour.lang === 'ar' ? g.ar : g.en;
       guide.note((arrived ? ARRIVED[tour.lang] : '') + name, story || g.desc, story ? tour.dir : 'rtl');
@@ -894,6 +898,9 @@ async function boot() {
       teleport(t);
     } });
     guide.near = narrate;
+    tourist = new TouristPanel({ osm, player, guide, tour, openTour: startTour });
+    tourist.spawn = player.pos.clone();
+    $('btn-tourist').onclick = () => tourist.toggle();
     // a language picker for the narrator at the top of the guide list
     guide.listExtras = (card) => {
       const row = document.createElement('div');
@@ -936,4 +943,4 @@ async function boot() {
   }
 }
 boot();
-window.__riyadh = { scene, camera, player, orbitCtl, get guide() { return guide; }, get tour() { return tour; }, startTour, orbitCtl, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
+window.__riyadh = { scene, camera, player, orbitCtl, get guide() { return guide; }, get tour() { return tour; }, get tourist() { return tourist; }, startTour, orbitCtl, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
