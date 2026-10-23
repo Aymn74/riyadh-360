@@ -138,30 +138,99 @@ const STOPS = [
     es: 'At-Turaif, en Diriyah, capital del primer Estado saudí en el siglo dieciocho. Sus palacios de adobe sobre el wadi Hanifa son Patrimonio Mundial de la UNESCO desde 2010.',
     de: 'At-Turaif in Diriyah, im achtzehnten Jahrhundert Hauptstadt des ersten saudischen Staates. Seine Lehmpaläste über dem Wadi Hanifa sind seit 2010 UNESCO-Welterbe.',
     zh: '德拉伊耶的图赖夫区是十八世纪第一沙特国的首都，哈尼法河谷之上的泥砖宫殿自2010年起被列入联合国教科文组织世界遗产名录。'
+  }],
+  // ---- stops added with the wider guide (positions from OpenStreetMap)
+  ['hokm', 22, {
+    ar: 'قصر الحكم، مقر الحكم التاريخي في قلب الرياض القديمة. أعيد بناؤه ضمن مشروع تطوير منطقة قصر الحكم، وتحيط به اليوم الساحات والأسواق.',
+    en: 'Qasr Al-Hokm, the historic seat of government in the heart of old Riyadh. It was rebuilt as part of the Qasr Al-Hokm district project and is now surrounded by squares and markets.',
+    fr: 'Qasr Al-Hokm, siège historique du pouvoir au cœur du vieux Riyad. Reconstruit dans le cadre du projet du quartier de Qasr Al-Hokm, il est aujourd\'hui entouré de places et de marchés.',
+    es: 'Qasr Al-Hokm, la sede histórica del gobierno en el corazón del viejo Riad. Fue reconstruido dentro del proyecto del distrito de Qasr Al-Hokm y hoy lo rodean plazas y mercados.',
+    de: 'Qasr Al-Hokm, der historische Regierungssitz im Herzen der Altstadt. Er wurde im Rahmen des Projekts für das Qasr-Al-Hokm-Viertel neu errichtet und ist heute von Plätzen und Märkten umgeben.',
+    zh: '胡克姆宫是利雅得老城中心的历史政府所在地。它在胡克姆宫区改造项目中重建，如今四周环绕着广场和市场。'
+  }],
+  ['turkiMosque', 50, {
+    ar: 'جامع الإمام تركي بن عبدالله، الجامع الكبير في قلب الرياض بجوار قصر الحكم. يُعد من أبرز أمثلة العمارة النجدية الحديثة.',
+    en: 'The Imam Turki bin Abdullah Grand Mosque, the great mosque at the heart of Riyadh beside Qasr Al-Hokm. It is one of the finest examples of modern Najdi architecture.',
+    fr: 'La grande mosquée de l\'imam Turki ben Abdallah, au cœur de Riyad, à côté de Qasr Al-Hokm. C\'est l\'un des plus beaux exemples d\'architecture najdie moderne.',
+    es: 'La Gran Mezquita del Imam Turki bin Abdalá, en el corazón de Riad junto a Qasr Al-Hokm. Es uno de los mejores ejemplos de la arquitectura najdí moderna.',
+    de: 'Die Große Moschee Imam Turki bin Abdullah im Herzen Riads, neben Qasr Al-Hokm. Sie ist eines der schönsten Beispiele moderner Nadschd-Architektur.',
+    zh: '伊玛目图尔基·本·阿卜杜拉大清真寺位于利雅得市中心，紧邻胡克姆宫，是现代纳季德建筑的杰出代表。'
+  }],
+  ['zal', 12, {
+    ar: 'سوق الزل، من أقدم أسواق الرياض الشعبية. يشتهر بالمشالح والسجاد والبخور والعطور، وفيه حراج لبيع الأغراض القديمة.',
+    en: 'Souq Al-Zal, one of Riyadh\'s oldest traditional markets. It is known for bishts, carpets, incense and perfume, and has an auction for old goods.',
+    fr: 'Le souk Al-Zal, l\'un des plus anciens marchés traditionnels de Riyad. On y trouve des bishts, des tapis, de l\'encens et des parfums, et une vente aux enchères d\'objets anciens.',
+    es: 'El zoco Al-Zal, uno de los mercados tradicionales más antiguos de Riad. Es famoso por sus bishts, alfombras, incienso y perfumes, y tiene una subasta de objetos antiguos.',
+    de: 'Der Souk Al-Zal, einer der ältesten traditionellen Märkte Riads. Er ist bekannt für Bischts, Teppiche, Weihrauch und Parfüm und hat eine Auktion für alte Waren.',
+    zh: '扎尔市场是利雅得最古老的传统市场之一，以长袍、地毯、熏香和香水闻名，还有旧货拍卖。'
+  }],
+  ['redPalace', 16, {
+    ar: 'القصر الأحمر، بُني في الأربعينيات للأمير سعود بن عبدالعزيز حين كان ولياً للعهد. صار لاحقاً مقراً حكومياً، وهو اليوم متحف.',
+    en: 'The Red Palace, built in the 1940s for Prince Saud bin Abdulaziz when he was crown prince. It later became a government seat and is now a museum.',
+    fr: 'Le Palais rouge, construit dans les années 1940 pour le prince Saoud ben Abdelaziz, alors prince héritier. Il devint ensuite un siège gouvernemental et c\'est aujourd\'hui un musée.',
+    es: 'El Palacio Rojo, construido en los años cuarenta para el príncipe Saud bin Abdulaziz cuando era príncipe heredero. Más tarde fue sede de gobierno y hoy es un museo.',
+    de: 'Der Rote Palast, in den 1940er Jahren für Prinz Saud bin Abdulaziz erbaut, als er Kronprinz war. Später war er Regierungssitz, heute ist er ein Museum.',
+    zh: '红宫建于二十世纪四十年代，是为当时的王储沙特·本·阿卜杜勒阿齐兹亲王修建的，后来成为政府机构所在地，如今是一座博物馆。'
+  }],
+  ['murabba', 16, {
+    ar: 'قصر المربع، بناه الملك عبدالعزيز من الطين أواخر الثلاثينيات خارج أسوار الرياض القديمة. كان سكنه ومقر حكمه، وهو اليوم متحف ضمن مركز الملك عبدالعزيز التاريخي.',
+    en: 'Murabba Palace, built of mud brick by King Abdulaziz in the late 1930s outside the walls of old Riyadh. It was his home and seat of government, and is now a museum in the King Abdulaziz Historical Centre.',
+    fr: 'Le palais de Murabba, bâti en terre par le roi Abdelaziz à la fin des années 1930, hors des remparts du vieux Riyad. Ce fut sa résidence et son siège du pouvoir ; c\'est aujourd\'hui un musée.',
+    es: 'El Palacio de Murabba, construido en adobe por el rey Abdulaziz a finales de los años treinta, fuera de las murallas del viejo Riad. Fue su residencia y sede de gobierno; hoy es un museo.',
+    de: 'Der Murabba-Palast, Ende der 1930er Jahre von König Abdulaziz aus Lehm außerhalb der alten Stadtmauern erbaut. Er war sein Wohnsitz und Regierungssitz und ist heute ein Museum.',
+    zh: '穆拉巴宫由阿卜杜勒阿齐兹国王于二十世纪三十年代末用泥砖建造，位于老城墙之外，曾是他的住所和执政之地，如今是一座博物馆。'
+  }],
+  ['ksu', 30, {
+    ar: 'جامعة الملك سعود، أول جامعة في المملكة، تأسست عام 1957. حرمها الرئيسي من أكبر الحرم الجامعية في المنطقة.',
+    en: 'King Saud University, the first university in Saudi Arabia, founded in 1957. Its main campus is one of the largest in the region.',
+    fr: 'L\'université du roi Saoud, première université d\'Arabie saoudite, fondée en 1957. Son campus principal est l\'un des plus grands de la région.',
+    es: 'La Universidad Rey Saud, la primera universidad de Arabia Saudí, fundada en 1957. Su campus principal es uno de los más grandes de la región.',
+    de: 'Die König-Saud-Universität, die erste Universität Saudi-Arabiens, gegründet 1957. Ihr Hauptcampus gehört zu den größten der Region.',
+    zh: '沙特国王大学是沙特阿拉伯第一所大学，创建于1957年，其主校区是该地区最大的校园之一。'
+  }],
+  ['boulevard', 30, {
+    ar: 'بوليفارد رياض سيتي، منطقة ترفيه ومطاعم ومسارح. وهو من أبرز وجهات موسم الرياض، ويضج بالحياة في المساء.',
+    en: 'Boulevard Riyadh City, a district of entertainment, restaurants and theatres. It is a highlight of Riyadh Season and comes alive in the evening.',
+    fr: 'Boulevard Riyadh City, un quartier de divertissement, de restaurants et de théâtres. C\'est l\'un des temps forts de la saison de Riyad, très animé le soir.',
+    es: 'Boulevard Riyadh City, una zona de ocio, restaurantes y teatros. Es uno de los grandes atractivos de la temporada de Riad y cobra vida por la noche.',
+    de: 'Boulevard Riyadh City, ein Viertel mit Unterhaltung, Restaurants und Theatern. Es ist ein Höhepunkt der Riyadh Season und erwacht am Abend zum Leben.',
+    zh: '利雅得城市大道是集娱乐、餐饮和剧院于一体的街区，是利雅得季的亮点，夜晚尤为热闹。'
+  }],
+  ['bujairi', 14, {
+    ar: 'مطل البجيري في الدرعية، مطاعم ومقاهٍ على ضفة وادي حنيفة. تطل مباشرة على قصور حي الطريف.',
+    en: 'Al-Bujairi Terrace in Diriyah, restaurants and cafés on the bank of Wadi Hanifa. They look straight across to the palaces of At-Turaif.',
+    fr: 'La terrasse d\'Al-Bujairi à Diriyah, des restaurants et des cafés au bord du wadi Hanifa. Ils font face aux palais d\'At-Turaif.',
+    es: 'La terraza de Al-Bujairi en Diriyah, restaurantes y cafés a orillas del wadi Hanifa. Miran directamente a los palacios de At-Turaif.',
+    de: 'Die Al-Bujairi-Terrasse in Diriyah, Restaurants und Cafés am Ufer des Wadi Hanifa. Sie blicken direkt hinüber zu den Palästen von At-Turaif.',
+    zh: '德拉伊耶的布贾伊里露台沿哈尼法河谷而建，餐厅和咖啡馆林立，正对图赖夫区的宫殿。'
   }]
 ];
 
 // themed tours: which stops each theme visits, and which stops matter most when time is short
+// travelling order: the old town, north past the towers, west to the Boulevard and the university, ending in Diriyah
+const ORDER = ['hokm', 'turkiMosque', 'masmak', 'zal', 'redPalace', 'water', 'murabba', 'museum', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'rafal', 'kafd', 'boulevard', 'ksu', 'bujairi', 'turaif'];
 const THEMES = {
-  all: ['masmak', 'museum', 'water', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'kafd', 'rafal', 'turaif'],
-  history: ['masmak', 'museum', 'water', 'tv', 'turaif'],
-  towers: ['tv', 'faisaliah', 'kingdom', 'kafd', 'rafal'],
-  culture: ['museum', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom']
+  all: ORDER,
+  history: ['hokm', 'masmak', 'zal', 'redPalace', 'murabba', 'museum', 'turaif'],
+  towers: ['tv', 'faisaliah', 'kingdom', 'rafal', 'kafd'],
+  culture: ['turkiMosque', 'museum', 'moi', 'library', 'faisaliah', 'kingdom', 'ksu'],
+  market: ['zal', 'tahlia', 'boulevard', 'bujairi']
 };
-const RANK = ['kingdom', 'masmak', 'faisaliah', 'turaif', 'kafd', 'museum', 'library', 'tahlia', 'rafal', 'tv', 'moi', 'water'];
+const RANK = ['kingdom', 'masmak', 'faisaliah', 'turaif', 'kafd', 'museum', 'zal', 'murabba', 'hokm', 'turkiMosque', 'ksu', 'boulevard', 'bujairi', 'library', 'tahlia', 'rafal', 'tv', 'moi', 'water', 'redPalace'];
 const DURS = { short: { max: 4, brief: true }, medium: { max: 7, brief: false }, full: { max: 99, brief: false } };
 const B = {
-  ar: { design: 'صمّم جولتك', theme: 'الموضوع', length: 'المدة', themes: { all: 'شاملة', history: 'تاريخية', towers: 'الأبراج', culture: 'عمارة وثقافة' }, durs: { short: 'قصيرة', medium: 'متوسطة', full: 'كاملة' }, about: 'نحو', min: 'دقيقة', stops: 'محطات', go: 'ابدأ الجولة', cancel: 'إلغاء' },
-  en: { design: 'Plan your tour', theme: 'Theme', length: 'Length', themes: { all: 'Everything', history: 'History', towers: 'Skyline', culture: 'Architecture & culture' }, durs: { short: 'Short', medium: 'Medium', full: 'Full' }, about: 'about', min: 'min', stops: 'stops', go: 'Start the tour', cancel: 'Cancel' },
-  fr: { design: 'Composez votre visite', theme: 'Thème', length: 'Durée', themes: { all: 'Tout', history: 'Histoire', towers: 'Gratte-ciel', culture: 'Architecture et culture' }, durs: { short: 'Courte', medium: 'Moyenne', full: 'Complète' }, about: 'environ', min: 'min', stops: 'étapes', go: 'Commencer la visite', cancel: 'Annuler' },
-  es: { design: 'Diseñe su recorrido', theme: 'Tema', length: 'Duración', themes: { all: 'Todo', history: 'Historia', towers: 'Rascacielos', culture: 'Arquitectura y cultura' }, durs: { short: 'Corta', medium: 'Media', full: 'Completa' }, about: 'unos', min: 'min', stops: 'paradas', go: 'Empezar el recorrido', cancel: 'Cancelar' },
-  de: { design: 'Rundgang planen', theme: 'Thema', length: 'Dauer', themes: { all: 'Alles', history: 'Geschichte', towers: 'Skyline', culture: 'Architektur und Kultur' }, durs: { short: 'Kurz', medium: 'Mittel', full: 'Ganz' }, about: 'ca.', min: 'Min.', stops: 'Stationen', go: 'Rundgang starten', cancel: 'Abbrechen' },
-  zh: { design: '定制您的游览', theme: '主题', length: '时长', themes: { all: '全部', history: '历史', towers: '摩天楼', culture: '建筑与文化' }, durs: { short: '短', medium: '中', full: '完整' }, about: '约', min: '分钟', stops: '站', go: '开始游览', cancel: '取消' }
+  ar: { design: 'صمّم جولتك', theme: 'الموضوع', length: 'المدة', themes: { all: 'شاملة', history: 'تاريخية', towers: 'الأبراج', culture: 'عمارة وثقافة', market: 'أسواق ومطاعم' }, durs: { short: 'قصيرة', medium: 'متوسطة', full: 'كاملة' }, about: 'نحو', min: 'دقيقة', stops: 'محطات', go: 'ابدأ الجولة', cancel: 'إلغاء' },
+  en: { design: 'Plan your tour', theme: 'Theme', length: 'Length', themes: { all: 'Everything', history: 'History', towers: 'Skyline', culture: 'Architecture & culture', market: 'Souqs & food' }, durs: { short: 'Short', medium: 'Medium', full: 'Full' }, about: 'about', min: 'min', stops: 'stops', go: 'Start the tour', cancel: 'Cancel' },
+  fr: { design: 'Composez votre visite', theme: 'Thème', length: 'Durée', themes: { all: 'Tout', history: 'Histoire', towers: 'Gratte-ciel', culture: 'Architecture et culture', market: 'Souks et cuisine' }, durs: { short: 'Courte', medium: 'Moyenne', full: 'Complète' }, about: 'environ', min: 'min', stops: 'étapes', go: 'Commencer la visite', cancel: 'Annuler' },
+  es: { design: 'Diseñe su recorrido', theme: 'Tema', length: 'Duración', themes: { all: 'Todo', history: 'Historia', towers: 'Rascacielos', culture: 'Arquitectura y cultura', market: 'Zocos y comida' }, durs: { short: 'Corta', medium: 'Media', full: 'Completa' }, about: 'unos', min: 'min', stops: 'paradas', go: 'Empezar el recorrido', cancel: 'Cancelar' },
+  de: { design: 'Rundgang planen', theme: 'Thema', length: 'Dauer', themes: { all: 'Alles', history: 'Geschichte', towers: 'Skyline', culture: 'Architektur und Kultur', market: 'Souks und Essen' }, durs: { short: 'Kurz', medium: 'Mittel', full: 'Ganz' }, about: 'ca.', min: 'Min.', stops: 'Stationen', go: 'Rundgang starten', cancel: 'Abbrechen' },
+  zh: { design: '定制您的游览', theme: '主题', length: '时长', themes: { all: '全部', history: '历史', towers: '摩天楼', culture: '建筑与文化', market: '市场与美食' }, durs: { short: '短', medium: '中', full: '完整' }, about: '约', min: '分钟', stops: '站', go: '开始游览', cancel: '取消' }
 };
 const WELCOME = { ar: 'أهلاً بكم في الرياض، عاصمة المملكة العربية السعودية.', en: 'Welcome to Riyadh, the capital of Saudi Arabia.', fr: 'Bienvenue à Riyad, capitale de l\'Arabie saoudite.', es: 'Bienvenidos a Riad, la capital de Arabia Saudí.', de: 'Willkommen in Riad, der Hauptstadt Saudi-Arabiens.', zh: '欢迎来到沙特阿拉伯首都利雅得。' };
 const THEME_INTRO = {
   history: { ar: 'في هذه الجولة نتتبع تاريخ المدينة، من قلعة الطين التي انطلق منها توحيد المملكة إلى عاصمة الدولة السعودية الأولى في الدرعية.', en: 'This tour follows the city\'s history, from the mud fort where the unification began to Diriyah, capital of the first Saudi state.', fr: 'Cette visite suit l\'histoire de la ville, du fort de terre où commença l\'unification jusqu\'à Diriyah, capitale du premier État saoudien.', es: 'Este recorrido sigue la historia de la ciudad, desde el fuerte de adobe donde empezó la unificación hasta Diriyah, capital del primer Estado saudí.', de: 'Dieser Rundgang folgt der Geschichte der Stadt, von der Lehmfestung, mit der die Einigung begann, bis nach Diriyah, der Hauptstadt des ersten saudischen Staates.', zh: '这条路线追溯城市的历史，从开启统一大业的泥砖城堡，到第一沙特国的首都德拉伊耶。' },
   towers: { ar: 'في هذه الجولة نحلّق فوق أبراج الرياض، من برج التلفزيون إلى أعلى مباني المدينة في المركز المالي.', en: 'This tour flies over Riyadh\'s towers, from the TV tower to the tallest building in the city, in the financial district.', fr: 'Cette visite survole les tours de Riyad, de la tour de télévision au plus haut bâtiment de la ville, dans le quartier financier.', es: 'Este recorrido sobrevuela las torres de Riad, desde la torre de televisión hasta el edificio más alto de la ciudad, en el distrito financiero.', de: 'Dieser Rundgang führt über die Türme Riads, vom Fernsehturm bis zum höchsten Gebäude der Stadt im Finanzdistrikt.', zh: '这条路线飞越利雅得的高楼，从电视塔一直到金融区的全城最高建筑。' },
+  market: { ar: 'في هذه الجولة نزور أسواق الرياض الشعبية وأشهر أماكن المطاعم والتنزه، من سوق الزل إلى الدرعية.', en: 'This tour visits Riyadh\'s traditional markets and its favourite places to eat and stroll, from Souq Al-Zal to Diriyah.', fr: 'Cette visite passe par les marchés traditionnels de Riyad et ses lieux préférés pour manger et flâner, du souk Al-Zal à Diriyah.', es: 'Este recorrido visita los mercados tradicionales de Riad y sus lugares favoritos para comer y pasear, del zoco Al-Zal a Diriyah.', de: 'Dieser Rundgang führt zu den traditionellen Märkten Riads und zu den beliebtesten Orten zum Essen und Bummeln, vom Souk Al-Zal bis nach Diriyah.', zh: '这条路线走访利雅得的传统市场和最受欢迎的美食与休闲去处，从扎尔市场一直到德拉伊耶。' },
   culture: { ar: 'في هذه الجولة نزور أشهر مباني الرياض تصميماً، وأماكن ثقافتها وحياتها اليومية.', en: 'This tour visits Riyadh\'s most striking buildings and the places where its culture and daily life happen.', fr: 'Cette visite parcourt les bâtiments les plus marquants de Riyad et les lieux de sa culture et de sa vie quotidienne.', es: 'Este recorrido visita los edificios más llamativos de Riad y los lugares de su cultura y su vida diaria.', de: 'Dieser Rundgang besucht die markantesten Gebäude Riads und die Orte seiner Kultur und seines Alltags.', zh: '这条路线走访利雅得最具特色的建筑，以及城市文化与日常生活的场所。' }
 };
 // the short tour keeps the first two sentences of each story
@@ -206,7 +275,7 @@ export class Tour {
     try { this.lang = localStorage.getItem('riyadh-tour-lang') || ''; } catch (e) { this.lang = ''; }
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = (navigator.language || 'ar').slice(0, 2);
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = 'en';
-    this.all = STOPS.map(([key, h, text]) => ({ key, h, text, ...PLACES[key] }));
+    this.all = STOPS.map(([key, h, text]) => ({ key, h, text, ...PLACES[key] })).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
     this.stops = this.all;
     this.theme = 'all'; this.dur = 'medium';
     try { this.theme = THEMES[localStorage.getItem('riyadh-tour-theme')] ? localStorage.getItem('riyadh-tour-theme') : 'all'; this.dur = DURS[localStorage.getItem('riyadh-tour-dur')] ? localStorage.getItem('riyadh-tour-dur') : 'medium'; } catch (e) { /* private mode */ }
