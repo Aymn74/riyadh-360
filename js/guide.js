@@ -197,6 +197,7 @@ export class Guide {
       list.appendChild(b);
     }
     this.card.querySelector('.g-x').addEventListener('click', () => (this.card.hidden = true));
+    this.listExtras?.(this.card);
     this.card.hidden = false;
   }
   open(g) {
@@ -256,7 +257,8 @@ export class Guide {
     this.mesh = new THREE.Mesh(geo, this.mat); this.mesh.renderOrder = 4; this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
   }
-  note(title, text) {
+  note(title, text, dir = 'rtl') {
+    this.toast.dir = dir;
     this.toast.innerHTML = `<b>${title}</b>${text}`;
     this.toast.hidden = false; this.toast.style.opacity = 1;
     clearTimeout(this.toastT);
@@ -323,14 +325,14 @@ export class Guide {
         const d = Math.hypot(g.x - p.x, g.z - p.z), near = g.h > 150 ? 500 : 250;
         if (d < near && (!this.seen.has(g.key) || performance.now() - this.seen.get(g.key) > 300000)) {
           this.seen.set(g.key, performance.now());
-          this.note(g.ar, g.desc);
+          if (this.near) this.near(g, false); else this.note(g.ar, g.desc);
         }
       }
     }
     // guidance
     if (!this.dest || this.loading) return;
     const g = this.dest, left = Math.hypot(g.x - p.x, g.z - p.z);
-    if (left < (g.h > 150 ? 220 : 140)) { this.note('وصلت إلى ' + g.ar, g.desc); this.seen.set(g.key, performance.now()); this.clear(); return; }
+    if (left < (g.h > 150 ? 220 : 140)) { if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc); this.seen.set(g.key, performance.now()); this.clear(); return; }
     let tx = g.x, tz = g.z, remain = left;
     const R = this.route;
     if (R && this.player.mode !== 'heli') {

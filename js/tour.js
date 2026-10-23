@@ -29,6 +29,8 @@ const INTRO = {
   de: 'Willkommen in Riad, der Hauptstadt Saudi-Arabiens. Wir beginnen im Herzen der Altstadt, fahren nach Norden an den modernen Türmen vorbei und enden in Diriyah, wo alles begann.',
   zh: '欢迎来到沙特阿拉伯首都利雅得。我们从老城中心出发，向北穿过现代高楼，最后抵达故事开始的地方——德拉伊耶。'
 };
+export const ARRIVED = { ar: 'وصلت إلى ', en: 'You have arrived at ', fr: 'Vous êtes arrivé : ', es: 'Ha llegado a ', de: 'Angekommen: ', zh: '您已到达' };
+const DISTRICT = { ar: (d) => 'حي ' + d.ar, en: (d) => d.en + ' district', fr: (d) => 'Quartier ' + d.en, es: (d) => 'Barrio ' + d.en, de: (d) => 'Viertel ' + d.en, zh: (d) => d.en };
 const NEXT = { ar: 'التالي: ', en: 'Next: ', fr: 'Prochain arrêt : ', es: 'Siguiente parada: ', de: 'Nächster Halt: ', zh: '下一站：' };
 const OUTRO = {
   ar: 'انتهت جولتنا في الرياض. يمكنك الآن التجول بحرية، أو فتح الدليل لزيارة أي معلم من جديد.',
@@ -198,6 +200,8 @@ export class Tour {
     this.camera = camera; this.onEnd = onEnd;
     this.active = false; this.paused = false; this.muted = false;
     this.speed = 1;
+    this.narrator = true;
+    try { this.narrator = localStorage.getItem('riyadh-narrator') !== 'off'; } catch (e) { /* private mode */ }
     try { this.speed = [1, 1.5, 2].includes(+localStorage.getItem('riyadh-tour-speed')) ? +localStorage.getItem('riyadh-tour-speed') : 1; } catch (e) { /* private mode */ }
     try { this.lang = localStorage.getItem('riyadh-tour-lang') || ''; } catch (e) { this.lang = ''; }
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = (navigator.language || 'ar').slice(0, 2);
@@ -218,6 +222,33 @@ export class Tour {
     if (!this.synth) return null;
     const L = LANGS.find((l) => l.id === lang), vs = this.synth.getVoices();
     return vs.find((v) => v.lang === L.bcp) || vs.find((v) => v.lang.replace('_', '-').toLowerCase().startsWith(lang)) || null;
+  }
+  // ---- the narrator outside the tour: landmarks as you pass them, districts as you enter them
+  setNarrator(on) {
+    this.narrator = on;
+    try { localStorage.setItem('riyadh-narrator', on ? 'on' : 'off'); } catch (e) { /* private mode */ }
+    if (!on && !this.active) this.synth?.cancel();
+  }
+  setLang(id) {
+    if (!LANGS.find((l) => l.id === id)) return;
+    this.lang = id;
+    try { localStorage.setItem('riyadh-tour-lang', id); } catch (e) { /* private mode */ }
+  }
+  get dir() { return LANGS.find((l) => l.id === this.lang).dir; }
+  storyFor(key) { const s = this.all.find((q) => q.key === key); return s ? s.text[this.lang] : null; }
+  districtLine(d) { return DISTRICT[this.lang](d); }
+  // interrupt: a landmark story replaces whatever is being said; a district name waits its turn
+  speakFree(text, interrupt) {
+    if (!this.synth || !this.narrator || this.active || !text) return false;
+    if (!interrupt && (this.synth.speaking || this.synth.pending)) return false;
+    this.synth.cancel();
+    const L = LANGS.find((l) => l.id === this.lang), v = this.voiceFor(this.lang);
+    for (const t of text.split(/(?<=[.!?。؟])\s*/).filter((x) => x.trim())) {
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = L.bcp; if (v) u.voice = v; u.rate = 1.05;
+      this.synth.speak(u);
+    }
+    return true;
   }
   // ---- planning: the theme's stops, trimmed to the most important ones for the length, kept in travelling order
   plan(theme = this.theme, dur = this.dur) {

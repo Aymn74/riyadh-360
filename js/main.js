@@ -14,7 +14,7 @@ import { OSM, RC, F, SEG } from './osm.js';
 import { World } from './world.js';
 import { Cars } from './cars.js';
 import { Guide } from './guide.js';
-import { Tour } from './tour.js';
+import { Tour, LANGS, ARRIVED } from './tour.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t, p) => { $('loading-status').textContent = t; if (p !== undefined) $('loading-progress').style.width = (p * 100).toFixed(0) + '%'; };
@@ -792,6 +792,11 @@ function updateHud(dt, fps) {
   const d = G.districtAt(player.pos.x, player.pos.z);
   const r = roadName(player.pos.x, player.pos.z);
   const key = (r ? r.ar : '') + d.en;
+  if (d.en !== lastDistrict) {
+    // entering a new district while moving: the narrator names it, at most every 15 s
+    if (lastDistrict && tour && !tour.active && Math.abs(player.speed) > 2 && performance.now() - lastDistrictT > 15000 && tour.speakFree(tour.districtLine(d), false)) lastDistrictT = performance.now();
+    lastDistrict = d.en;
+  }
   if (key !== lastLoc) {
     lastLoc = key;
     $('sign-ar').textContent = r ? r.ar : 'حي ' + d.ar;
@@ -805,7 +810,7 @@ function updateHud(dt, fps) {
 }
 
 // ---------- main loop ----------
-let guide = null, tour = null;
+let guide = null, tour = null, lastDistrict = '', lastDistrictT = 0;
 const IDLE = { ax: 0, ay: 0, az: 0 };
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
@@ -877,10 +882,30 @@ async function boot() {
       const t = TELEPORTS.find((q) => q.id === stop.key) || { id: stop.key, at: [stop.lat, stop.lon], small: true };
       teleport(t); setCamera('chase');
     } });
+    // the narrator speaks the guide's notes, in the tour's language
+    const narrate = (g, arrived) => {
+      const story = tour.storyFor(g.key) || (tour.lang === 'ar' ? g.desc : '');
+      const name = tour.lang === 'ar' ? g.ar : g.en;
+      guide.note((arrived ? ARRIVED[tour.lang] : '') + name, story || g.desc, story ? tour.dir : 'rtl');
+      tour.speakFree((arrived ? ARRIVED[tour.lang] : '') + name + '. ' + story, true);
+    };
     guide = new Guide({ scene, camera, osm, player, startTour, teleport: (key) => {
       const t = TELEPORTS.find((q) => q.id === key) || (() => { const g = G.PLACES[key]; return { id: key, at: [g.lat, g.lon], small: true }; })();
       teleport(t);
     } });
+    guide.near = narrate;
+    // a language picker for the narrator at the top of the guide list
+    guide.listExtras = (card) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px';
+      row.innerHTML = `<span>لغة الراوي</span><select id="narrator-lang" style="height:32px;border-radius:8px;background:#2a231b;color:#fbf6ec;border:1px solid rgba(255,255,255,.2);font:inherit">${LANGS.map((l) => `<option value="${l.id}"${l.id === tour.lang ? ' selected' : ''}>${l.name}</option>`).join('')}</select>`;
+      row.querySelector('select').onchange = (e) => tour.setLang(e.target.value);
+      card.querySelector('.g-tour').after(row);
+    };
+    const nb = $('btn-narrator');
+    const syncNarrator = () => { nb.setAttribute('aria-pressed', tour.narrator); nb.classList.toggle('muted', !tour.narrator); };
+    nb.onclick = () => { tour.setNarrator(!tour.narrator); syncNarrator(); if (tour.narrator) tour.speakFree(tour.lang === 'ar' ? 'الراوي يعمل' : 'Narrator on', true); };
+    syncNarrator();
     player.osm = osm;
     status('بناء المعالم: برج المملكة، الفيصلية، المصمك…', 0.45);
     buildLandmarks(scene);
