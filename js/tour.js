@@ -197,6 +197,8 @@ export class Tour {
   constructor({ camera, onEnd }) {
     this.camera = camera; this.onEnd = onEnd;
     this.active = false; this.paused = false; this.muted = false;
+    this.speed = 1;
+    try { this.speed = [1, 1.5, 2].includes(+localStorage.getItem('riyadh-tour-speed')) ? +localStorage.getItem('riyadh-tour-speed') : 1; } catch (e) { /* private mode */ }
     try { this.lang = localStorage.getItem('riyadh-tour-lang') || ''; } catch (e) { this.lang = ''; }
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = (navigator.language || 'ar').slice(0, 2);
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = 'en';
@@ -229,15 +231,15 @@ export class Tour {
   }
   // minutes, from the same flight times and a speaking pace of about 11 characters a second
   estimate(stops) {
-    const cps = this.lang === 'zh' ? 4.5 : 11, said = (t) => t[this.lang].length / cps;
+    const cps = this.lang === 'zh' ? 5.5 : 13, said = (t) => t[this.lang].length / cps;
     let x = this.from ? this.from.x : 0, z = this.from ? this.from.z : 0, sec = 0;
     stops.forEach((s, k) => {
-      const fly = Math.min(16, Math.max(5, 3 + Math.hypot(s.x - x, s.z - z) / 900));
+      const fly = Math.min(9, Math.max(3.5, 2.5 + Math.hypot(s.x - x, s.z - z) / 1400));
       sec += k === 0 ? Math.max(fly, said(this.intro())) : fly;
-      sec += Math.max(4, said(s.text)) + 2;
+      sec += Math.max(2.5, said(s.text)) + 0.8;
       x = s.x; z = s.z;
     });
-    return Math.max(1, Math.round((sec + said(OUTRO)) / 60));
+    return Math.max(1, Math.round((sec + said(OUTRO)) / 60 / this.speed));
   }
   open(fromPos, fromLook) {
     this.from = fromPos.clone(); this.fromLook = fromLook.clone();
@@ -277,6 +279,7 @@ export class Tour {
       <select aria-label="${u.lang}">${LANGS.map((l) => `<option value="${l.id}"${l.id === this.lang ? ' selected' : ''}>${l.name}</option>`).join('')}</select>
       <button class="tb" data-a="mute" type="button" title="${this.muted ? u.unmute : u.mute}">${this.muted ? '🔇' : '🔊'}</button>
       <button class="tb" data-a="pause" type="button" title="${this.paused ? u.play : u.pause}">${this.paused ? '▶' : '❚❚'}</button>
+      <button class="tb" data-a="speed" type="button" title="${this.speed}x" aria-label="${this.speed}x">×${this.speed}</button>
       <button class="tb" data-a="next" type="button" title="${u.next}">⏭</button>
       <button class="tb" data-a="end" type="button" title="${u.end}">✕</button></div>
       <div class="cap"><h4>${stopName}</h4><span class="txt"></span></div><div class="bar"><i></i></div>
@@ -289,6 +292,12 @@ export class Tour {
     this.el.querySelector('[data-a="mute"]').onclick = () => { this.muted = !this.muted; if (this.muted) this.synth?.cancel(); else this.say(this.caption); };
     this.el.querySelector('[data-a="pause"]').onclick = () => { this.paused = !this.paused; if (this.paused) this.synth?.pause(); else this.synth?.resume(); this.render(); this.setText(); };
     this.el.querySelector('[data-a="next"]').onclick = () => this.advance();
+    // ×1 → ×1.5 → ×2: faster flights, shorter pauses and a quicker narrator (from the next sentence)
+    this.el.querySelector('[data-a="speed"]').onclick = () => {
+      this.speed = this.speed === 1 ? 1.5 : this.speed === 1.5 ? 2 : 1;
+      try { localStorage.setItem('riyadh-tour-speed', this.speed); } catch (e) { /* private mode */ }
+      this.render(); this.setText();
+    };
     this.el.querySelector('[data-a="end"]').onclick = () => this.stop();
     this.setText();
   }
@@ -299,7 +308,7 @@ export class Tour {
     this.render();
     this.spoken = false; this.sayT = 0;
     // without a voice, hold the subtitle for a reading time
-    this.minHold = Math.max(6, text[this.lang].length / (this.lang === 'zh' ? 5 : 15));
+    this.minHold = Math.max(4, text[this.lang].length / (this.lang === 'zh' ? 6 : 18));
     this.synth?.cancel();
     if (!this.synth || this.muted) { this.spoken = true; return; }
     // one utterance per sentence: some browsers cut long utterances off after about 15 seconds
@@ -309,7 +318,7 @@ export class Tour {
     const token = (this.token = {});
     parts.forEach((t, k) => {
       const u = new SpeechSynthesisUtterance(t);
-      u.lang = L.bcp; if (v) u.voice = v; u.rate = 0.95;
+      u.lang = L.bcp; if (v) u.voice = v; u.rate = Math.min(2, 1.05 * this.speed);
       if (k === parts.length - 1) { const done = () => { if (this.token === token) { this.talking = false; this.spoken = true; } }; u.onend = done; u.onerror = done; }
       this.synth.speak(u);
     });
@@ -334,7 +343,7 @@ export class Tour {
     const o = this.orbitFor(s);
     this.fly = { t: 0, p0: this.pos.clone(), l0: this.look.clone(), s, o };
     const d = Math.hypot(s.x - this.pos.x, s.z - this.pos.z);
-    this.fly.T = Math.min(16, Math.max(5, 3 + d / 900));
+    this.fly.T = Math.min(9, Math.max(3.5, 2.5 + d / 1400));
     this.fly.a1 = Math.atan2(this.pos.z - s.z, this.pos.x - s.x);   // arrive on the side we come from
     this.fly.cruise = Math.min(450, Math.max(o.y + 40, d * 0.06));
     if (this.phase !== 'intro') this.phase = 'fly';
@@ -359,6 +368,7 @@ export class Tour {
   update(dt) {
     if (!this.active) return;
     if (this.paused) return;
+    dt *= this.speed;
     this.sayT += dt;
     // some engines never report the end of speech: give up waiting after a generous reading time
     if (!this.spoken && this.sayT > this.minHold * 1.8 + 3) { this.spoken = true; this.talking = false; }
@@ -382,11 +392,11 @@ export class Tour {
     this.orbitA += dt * (o.r > 250 ? 0.07 : 0.11);
     this.pos.set(s.x + Math.cos(this.orbitA) * o.r, o.y + Math.sin(this.orbitT * 0.3) * o.y * 0.08, s.z + Math.sin(this.orbitA) * o.r);
     this.look.set(s.x, o.ly, s.z);
-    const hold = this.muted || !this.synth ? this.minHold : Math.max(4, this.minHold * 0.5);
+    const hold = this.muted || !this.synth ? this.minHold : Math.max(2.5, this.minHold * 0.3);
     if (bar) bar.style.width = Math.min(100, (this.sayT / (hold + 2)) * 100).toFixed(1) + '%';
     if (this.spoken && this.sayT > hold && !this.talking) {
       this.waitT = (this.waitT || 0) + dt;
-      if (this.waitT > 2) { this.waitT = 0; this.advance(); }
+      if (this.waitT > 0.8) { this.waitT = 0; this.advance(); }
     }
   }
 }
