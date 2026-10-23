@@ -240,6 +240,42 @@ const THEME_INTRO = {
 // the short tour keeps the first two sentences of each story
 const firstSentence = (t) => (t.match(/^(?:.*?(?:[。؟]|[.!?](?=\s|$))){1,2}/) || [t])[0].trim();
 
+// ---- your own tour: every landmark to pick from, a note on each before it is added, then the best order
+const C = {
+  ar: { ready: 'جولة جاهزة', custom: 'صمّم جولتك بنفسك', search: 'ابحث عن معلم…', add: 'أضف إلى جولتك', added: 'في جولتك ✓', remove: 'احذف', up: 'قدّم', route: 'مسار جولتك', empty: 'اضغط على أي معلم لتقرأ نبذة عنه، ثم أضفه إلى جولتك.', best: 'اقترح أفضل مسار', fly: 'جولة جوية', drive: 'قيادة على المسار', road: 'بالطرق', approx: 'تقريباً', km: 'كم', min: 'دقيقة قيادة', planning: 'جارٍ حساب أفضل ترتيب على الطرق…', ordered: 'رتّبنا المحطات لأقصر طريق يبدأ من موقعك.', clear: 'مسح الكل', all: 'الكل', from: 'من موقعك' },
+  en: { ready: 'Ready-made tour', custom: 'Design your own', search: 'Search landmarks…', add: 'Add to my tour', added: 'In my tour ✓', remove: 'Remove', up: 'Move up', route: 'My route', empty: 'Tap any landmark to read about it, then add it to your tour.', best: 'Suggest the best route', fly: 'Flying tour', drive: 'Drive the route', road: 'by road', approx: 'roughly', km: 'km', min: 'min driving', planning: 'Working out the best order on the roads…', ordered: 'Stops ordered for the shortest drive from where you are.', clear: 'Clear', all: 'All', from: 'from you' },
+  fr: { ready: 'Visite prête', custom: 'Composez la vôtre', search: 'Chercher un lieu…', add: 'Ajouter à ma visite', added: 'Dans ma visite ✓', remove: 'Retirer', up: 'Monter', route: 'Mon itinéraire', empty: 'Touchez un lieu pour lire sa présentation, puis ajoutez-le.', best: 'Proposer le meilleur itinéraire', fly: 'Visite aérienne', drive: 'Conduire l\'itinéraire', road: 'par la route', approx: 'environ', km: 'km', min: 'min de route', planning: 'Calcul du meilleur ordre sur les routes…', ordered: 'Étapes classées pour le trajet le plus court depuis votre position.', clear: 'Tout effacer', all: 'Tout', from: 'depuis vous' },
+  es: { ready: 'Recorrido listo', custom: 'Diseñe el suyo', search: 'Buscar un lugar…', add: 'Añadir a mi recorrido', added: 'En mi recorrido ✓', remove: 'Quitar', up: 'Subir', route: 'Mi ruta', empty: 'Toque un lugar para leer sobre él y luego añádalo.', best: 'Sugerir la mejor ruta', fly: 'Recorrido aéreo', drive: 'Conducir la ruta', road: 'por carretera', approx: 'aprox.', km: 'km', min: 'min en coche', planning: 'Calculando el mejor orden por carretera…', ordered: 'Paradas ordenadas para el trayecto más corto desde donde está.', clear: 'Borrar todo', all: 'Todo', from: 'desde usted' },
+  de: { ready: 'Fertiger Rundgang', custom: 'Eigenen planen', search: 'Ort suchen…', add: 'Zum Rundgang', added: 'Im Rundgang ✓', remove: 'Entfernen', up: 'Nach oben', route: 'Meine Route', empty: 'Tippen Sie auf einen Ort, um mehr zu lesen, und fügen Sie ihn dann hinzu.', best: 'Beste Route vorschlagen', fly: 'Rundflug', drive: 'Route fahren', road: 'auf der Straße', approx: 'etwa', km: 'km', min: 'Min. Fahrt', planning: 'Beste Reihenfolge auf den Straßen wird berechnet…', ordered: 'Stationen für die kürzeste Fahrt ab Ihrem Standort geordnet.', clear: 'Alles löschen', all: 'Alle', from: 'ab Ihnen' },
+  zh: { ready: '推荐路线', custom: '自定义游览', search: '搜索景点…', add: '加入我的游览', added: '已加入 ✓', remove: '移除', up: '上移', route: '我的路线', empty: '点击任意景点查看介绍，然后加入游览。', best: '推荐最佳路线', fly: '空中游览', drive: '驾车游览', road: '按道路', approx: '约', km: '公里', min: '分钟车程', planning: '正在按道路计算最佳顺序…', ordered: '已按从您所在位置出发的最短路线排序。', clear: '清空', all: '全部', from: '从您这里' }
+};
+const CUSTOM_INTRO = { ar: 'في هذه الجولة نزور المحطات التي اخترتها بنفسك.', en: 'On this tour we visit the stops you chose yourself.', fr: 'Cette visite passe par les étapes que vous avez choisies.', es: 'En este recorrido visitamos las paradas que usted eligió.', de: 'Dieser Rundgang führt zu den Stationen, die Sie selbst gewählt haben.', zh: '这次游览将前往您亲自挑选的站点。' };
+const ARROWS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+const arrowTo = (a, b) => ARROWS[Math.round(((Math.atan2(b.x - a.x, -(b.z - a.z)) / (Math.PI * 2)) * 8 + 8)) % 8];
+// best open path from the start (index 0) through every other point: nearest neighbour, then 2-opt and
+// single-stop moves until nothing shortens it. D may be asymmetric (one-way streets).
+export function bestPath(D) {
+  const n = D.length, left = new Set(Array.from({ length: n - 1 }, (_, i) => i + 1));
+  let p = [0];
+  while (left.size) { const a = p[p.length - 1]; let b = -1; for (const j of left) if (b < 0 || D[a][j] < D[a][b]) b = j; p.push(b); left.delete(b); }
+  const cost = (q) => { let c = 0; for (let k = 1; k < q.length; k++) c += D[q[k - 1]][q[k]]; return c; };
+  let best = cost(p), better = true;
+  for (let pass = 0; better && pass < 60; pass++) {
+    better = false;
+    for (let i = 1; i < n - 1; i++) for (let j = i + 1; j < n; j++) {
+      const q = p.slice(0, i).concat(p.slice(i, j + 1).reverse(), p.slice(j + 1)), c = cost(q);
+      if (c < best - 1e-6) { p = q; best = c; better = true; }
+    }
+    for (let i = 1; i < n; i++) for (let j = 1; j < n; j++) {
+      if (i === j) continue;
+      const q = p.slice(); const [x] = q.splice(i, 1); q.splice(j, 0, x);
+      const c = cost(q);
+      if (c < best - 1e-6) { p = q; best = c; better = true; }
+    }
+  }
+  return p.slice(1);
+}
+
 const CSS = `
 #tour-panel { position: fixed; z-index: 25; left: 0; right: 0; margin: 0 auto; width: min(560px, calc(100vw - 24px)); box-sizing: border-box; max-height: 86vh; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: rgba(20,16,12,0.9); color: #fbf6ec; border: 1px solid rgba(243,215,154,0.35); border-radius: 14px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
 #tour-panel .top { display: flex; align-items: center; gap: 8px; }
@@ -253,7 +289,7 @@ const CSS = `
 #tour-panel .cap h4 { margin: 0 0 2px; color: #f3d79a; font-size: 17px; }
 #tour-panel .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,0.12); margin-top: 8px; overflow: hidden; } #tour-panel .bar i { display: block; height: 100%; width: 0; background: #f3d79a; }
 #tour-panel .note { font-size: 11.5px; opacity: .7; margin-top: 4px; }
-#tour-panel .setup { display: grid; gap: 10px; margin-top: 10px; }
+#tour-panel .setup { display: grid; gap: 8px; margin-top: 8px; }
 #tour-panel .lbl { font-size: 12px; opacity: .7; }
 #tour-panel .opts { display: flex; flex-wrap: wrap; gap: 6px; }
 #tour-panel .opt { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: transparent; color: #fbf6ec; font: inherit; font-size: 13.5px; cursor: pointer; }
@@ -263,6 +299,26 @@ const CSS = `
 #tour-panel .go-row { display: flex; gap: 8px; }
 #tour-panel .go-row .tb { height: 40px; font-size: 14px; }
 #tour-panel .go-row .go { flex: 1; }
+#tour-panel .go-row { flex-wrap: wrap; position: sticky; bottom: -12px; margin: 0 -2px -12px; padding: 6px 2px 12px; background: rgba(20,16,12,0.97); }
+#tour-panel .go-row .alt { flex: 1; background: rgba(255,255,255,0.14); }
+#tour-panel .cq { height: 36px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); color: #fbf6ec; font: inherit; font-size: 14px; padding: 0 12px; }
+#tour-panel .opts.cats .opt { height: 30px; font-size: 12.5px; padding: 0 10px; }
+#tour-panel .pick { display: grid; gap: 4px; max-height: 24vh; max-height: 24dvh; overflow-y: auto; overscroll-behavior: contain; }
+#tour-panel .pk { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; background: rgba(255,255,255,0.05); border-radius: 9px; padding: 4px 4px 4px 8px; }
+#tour-panel .pk.open { background: rgba(243,215,154,0.1); }
+#tour-panel .pk-n { display: grid; text-align: start; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; padding: 4px 2px; min-width: 0; }
+#tour-panel .pk-n b { font-size: 14px; } #tour-panel .pk-n small { font-size: 11.5px; opacity: .65; }
+#tour-panel .pk-a { height: 32px; min-width: 32px; border-radius: 8px; border: 1px solid rgba(243,215,154,0.5); background: transparent; color: #f3d79a; font: inherit; font-size: 13px; cursor: pointer; padding: 0 9px; }
+#tour-panel .pk-a[aria-pressed="true"] { background: #1f9d63; border-color: #1f9d63; color: #fff; }
+#tour-panel .pk-d { grid-column: 1 / -1; margin: 0 2px 6px; font-size: 13px; line-height: 1.7; opacity: .92; }
+#tour-panel .pk-d .pk-a { margin-top: 6px; display: block; }
+#tour-panel .route { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: 17vh; max-height: 17dvh; overflow-y: auto; }
+#tour-panel .route li { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.06); border-radius: 8px; padding: 4px 6px; font-size: 13.5px; }
+#tour-panel .route .n { width: 22px; height: 22px; border-radius: 50%; background: #f3d79a; color: #2a1d10; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+#tour-panel .route b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+#tour-panel .route small { opacity: .75; font-size: 12px; white-space: nowrap; }
+#tour-panel .route button { width: 28px; height: 28px; border-radius: 7px; border: 0; background: rgba(255,255,255,0.1); color: #fbf6ec; cursor: pointer; flex: none; }
+#tour-panel .hint { font-size: 13px; opacity: .75; line-height: 1.6; }
 body.touring #touch-controls, body.touring .hud-bottom, body.touring #guide-nav { display: none !important; }
 @media (pointer: coarse) and (orientation: portrait) { #tour-panel .cap { font-size: 14px; } }
 `;
@@ -282,6 +338,12 @@ export class Tour {
     this.all = STOPS.map(([key, h, text]) => ({ key, h, text, ...PLACES[key] })).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
     this.stops = this.all;
     this.theme = 'all'; this.dur = 'medium';
+    this.spots = []; this.cats = {}; this.pick = []; this.mode = 'ready';
+    try {
+      this.mode = localStorage.getItem('riyadh-tour-mode') === 'custom' ? 'custom' : 'ready';
+      const pk = JSON.parse(localStorage.getItem('riyadh-tour-pick') || '[]');
+      if (Array.isArray(pk)) this.pick = pk.filter((k) => typeof k === 'string' && PLACES[k]);
+    } catch (e) { /* private mode */ }
     try { this.theme = THEMES[localStorage.getItem('riyadh-tour-theme')] ? localStorage.getItem('riyadh-tour-theme') : 'all'; this.dur = DURS[localStorage.getItem('riyadh-tour-dur')] ? localStorage.getItem('riyadh-tour-dur') : 'medium'; } catch (e) { /* private mode */ }
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     this.el = document.createElement('div'); this.el.id = 'tour-panel'; this.el.hidden = true; document.body.appendChild(this.el);
@@ -332,6 +394,7 @@ export class Tour {
     return this.all.filter((s) => keep.has(s.key)).map((s) => ({ ...s, text: DURS[dur].brief ? Object.fromEntries(Object.entries(s.text).map(([l, t]) => [l, firstSentence(t)])) : s.text }));
   }
   intro() {
+    if (this.custom) return Object.fromEntries(LANGS.map((l) => [l.id, WELCOME[l.id] + ' ' + CUSTOM_INTRO[l.id]]));
     if (this.theme === 'all') return INTRO;
     return Object.fromEntries(LANGS.map((l) => [l.id, WELCOME[l.id] + ' ' + THEME_INTRO[this.theme][l.id]]));
   }
@@ -354,7 +417,20 @@ export class Tour {
     this.renderSetup();
     this.el.querySelector('[data-a="go"]')?.focus({ preventScroll: true });
   }
+  modeTabs() {
+    const c = C[this.lang];
+    return `<div class="opts" role="group">${['ready', 'custom'].map((m) => `<button class="opt" type="button" data-mode="${m}" aria-pressed="${(this.mode || 'ready') === m}">${c[m]}</button>`).join('')}</div>`;
+  }
+  wireTabs() {
+    this.el.querySelectorAll('[data-mode]').forEach((x) => (x.onclick = () => {
+      this.mode = x.dataset.mode;
+      try { localStorage.setItem('riyadh-tour-mode', this.mode); } catch (e) { /* private mode */ }
+      this.renderSetup();
+      this.el.querySelector(`[data-mode="${this.mode}"]`)?.focus({ preventScroll: true });
+    }));
+  }
   renderSetup() {
+    if (this.mode === 'custom') { this.renderCustom(); return; }
     const u = this.ui, b = B[this.lang], L = LANGS.find((l) => l.id === this.lang);
     this.el.dir = L.dir;
     const stops = this.plan(), name = (s) => (this.lang === 'ar' ? s.ar : s.en);
@@ -363,6 +439,7 @@ export class Tour {
       <select aria-label="${u.lang}">${LANGS.map((l) => `<option value="${l.id}"${l.id === this.lang ? ' selected' : ''}>${l.name}</option>`).join('')}</select>
       <button class="tb" data-a="cancel" type="button" title="${b.cancel}">✕</button></div>
       <div class="setup">
+        ${this.modeTabs()}
         <div class="lbl">${b.theme}</div>
         <div class="opts" role="group" aria-label="${b.theme}">${Object.keys(THEMES).map((k) => `<button class="opt" type="button" data-theme-id="${k}" aria-pressed="${k === this.theme}">${b.themes[k]}</button>`).join('')}</div>
         <div class="lbl">${b.length}</div>
@@ -375,7 +452,141 @@ export class Tour {
     this.el.querySelectorAll('[data-theme-id]').forEach((x) => (x.onclick = () => { this.theme = x.dataset.themeId; keep(); this.renderSetup(); }));
     this.el.querySelectorAll('[data-dur]').forEach((x) => (x.onclick = () => { this.dur = x.dataset.dur; keep(); this.renderSetup(); }));
     this.el.querySelector('[data-a="cancel"]').onclick = () => { this.el.hidden = true; this.phase = null; if (this.opener && document.contains(this.opener)) this.opener.focus({ preventScroll: true }); };
-    this.el.querySelector('[data-a="go"]').onclick = () => { this.stops = this.plan(); this.start(this.from, this.fromLook); };
+    this.el.querySelector('[data-a="go"]').onclick = () => { this.custom = false; this.stops = this.plan(); this.start(this.from, this.fromLook); };
+    this.wireTabs();
+  }
+  // ---- the custom tour builder
+  spot(key) { return this.spots.find((g) => g.key === key); }
+  textOf(key) {
+    const s = this.all.find((q) => q.key === key);
+    if (s) return s.text;
+    const g = this.spot(key);
+    return Object.fromEntries(LANGS.map((l) => [l.id, l.id === 'ar' ? g.desc : g.descEn || g.desc]));
+  }
+  stopFor(key) {
+    const s = this.all.find((q) => q.key === key);
+    if (s) return s;
+    const g = this.spot(key);
+    return { key, h: g.h, text: this.textOf(key), ...PLACES[key] };
+  }
+  savePick() { try { localStorage.setItem('riyadh-tour-pick', JSON.stringify(this.pick)); } catch (e) { /* private mode */ } }
+  renderCustom() {
+    const b = B[this.lang], c = C[this.lang], L = LANGS.find((l) => l.id === this.lang);
+    this.el.dir = L.dir;
+    this.pcat = this.pcat || 'all'; this.pq = this.pq || '';
+    this.pick = this.pick.filter((k) => this.spot(k));
+    this.el.innerHTML = `<div class="top"><b class="keep">${b.design}</b><span class="sp"></span>
+      <select aria-label="${this.ui.lang}">${LANGS.map((l) => `<option value="${l.id}"${l.id === this.lang ? ' selected' : ''}>${l.name}</option>`).join('')}</select>
+      <button class="tb" data-a="cancel" type="button" title="${b.cancel}">✕</button></div>
+      <div class="setup">
+        ${this.modeTabs()}
+        <input class="cq" type="search" placeholder="${c.search}" aria-label="${c.search}" value="${esc(this.pq)}" autocomplete="off">
+        <div class="opts cats" role="group">${Object.entries(this.cats).filter(([k]) => k === 'all' || this.spots.some((g) => g.cat === k)).map(([k, [ar, en]]) => `<button class="opt" type="button" data-pcat="${k}" aria-pressed="${k === this.pcat}">${k === 'all' ? c.all : this.lang === 'ar' ? ar : en}</button>`).join('')}</div>
+        <div class="pick"></div>
+        <div class="lbl rl"></div>
+        <ol class="route"></ol>
+        <div class="plan"></div>
+        <div class="go-row">
+          <button class="tb alt" type="button" data-a="best">⇅ ${c.best}</button>
+          <button class="tb go" type="button" data-a="fly">▶ ${c.fly}</button>
+          <button class="tb go" type="button" data-a="drive">🚗 ${c.drive}</button>
+        </div>
+      </div>`;
+    this.el.querySelector('select').onchange = (e) => { this.lang = e.target.value; try { localStorage.setItem('riyadh-tour-lang', this.lang); } catch (err) { /* private mode */ } this.renderCustom(); };
+    this.el.querySelector('[data-a="cancel"]').onclick = () => { this.el.hidden = true; this.phase = null; if (this.opener && document.contains(this.opener)) this.opener.focus({ preventScroll: true }); };
+    const q = this.el.querySelector('.cq');
+    q.oninput = () => { this.pq = q.value; this.fillPick(); };
+    q.onkeydown = (e) => e.stopPropagation();   // typing must not drive the car
+    this.el.querySelectorAll('[data-pcat]').forEach((x) => (x.onclick = () => {
+      this.pcat = x.dataset.pcat;
+      this.el.querySelectorAll('[data-pcat]').forEach((y) => y.setAttribute('aria-pressed', y === x));
+      this.fillPick();
+    }));
+    // one listener for the list and the route: open a note, add or remove a stop, move it up
+    this.el.querySelector('.setup').onclick = (e) => {
+      const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.info) { this.pOpen = this.pOpen === t.dataset.info ? null : t.dataset.info; this.fillPick(t.dataset.info); }
+      else if (t.dataset.add) { const k = t.dataset.add, i = this.pick.indexOf(k); if (i < 0) this.pick.push(k); else this.pick.splice(i, 1); this.legs = null; this.savePick(); this.fillPick(k); this.fillRoute(); }
+      else if (t.dataset.rm) { this.pick.splice(+t.dataset.rm, 1); this.legs = null; this.savePick(); this.fillPick(); this.fillRoute(); }
+      else if (t.dataset.up) { const i = +t.dataset.up; if (i > 0) { [this.pick[i - 1], this.pick[i]] = [this.pick[i], this.pick[i - 1]]; this.legs = null; this.savePick(); this.fillRoute(); this.el.querySelector(`[data-up="${i - 1}"]`)?.focus({ preventScroll: true }); } }
+    };
+    this.el.querySelector('[data-a="best"]').onclick = () => this.bestOrder();
+    this.el.querySelector('[data-a="fly"]').onclick = () => {
+      if (!this.pick.length) return;
+      this.custom = true; this.stops = this.pick.map((k) => this.stopFor(k)); this.start(this.from, this.fromLook);
+    };
+    this.el.querySelector('[data-a="drive"]').onclick = () => {
+      if (!this.pick.length) return;
+      this.el.hidden = true; this.phase = null;
+      this.onDrive?.(this.pick.slice());
+    };
+    this.wireTabs();
+    this.fillPick(); this.fillRoute();
+  }
+  fillPick(keep) {
+    const c = C[this.lang], box = this.el.querySelector('.pick'); if (!box) return;
+    const top = box.scrollTop, q = this.pq.trim().toLowerCase(), f = this.from;
+    const name = (g) => (this.lang === 'ar' ? g.ar : g.en);
+    const items = this.spots.filter((g) => (this.pcat === 'all' || g.cat === this.pcat) && (!q || (g.ar + ' ' + g.en).toLowerCase().includes(q)))
+      .sort((a, b) => (a.rank || 99) - (b.rank || 99));
+    box.innerHTML = items.map((g) => {
+      const on = this.pick.includes(g.key), open = this.pOpen === g.key, d = Math.hypot(g.x - f.x, g.z - f.z) / 1000;
+      const cat = this.cats[g.cat] ? (this.lang === 'ar' ? this.cats[g.cat][0] : this.cats[g.cat][1]) : '';
+      return `<div class="pk${open ? ' open' : ''}"><button class="pk-n" type="button" data-info="${g.key}" aria-expanded="${open}"><b>${esc(name(g))}</b><small>${esc(cat)} · ${d.toFixed(d < 10 ? 1 : 0)} ${c.km}</small></button>
+        <button class="pk-a" type="button" data-add="${g.key}" aria-pressed="${on}" aria-label="${on ? c.remove : c.add}: ${esc(name(g))}">${on ? '✓' : '+'}</button>
+        ${open ? `<p class="pk-d">${esc(this.textOf(g.key)[this.lang])}<button class="pk-a" type="button" data-add="${g.key}" aria-pressed="${on}">${on ? c.added : c.add}</button></p>` : ''}</div>`;
+    }).join('');
+    box.scrollTop = top;
+    if (keep) box.querySelector(`[data-info="${keep}"]`)?.focus({ preventScroll: true });
+  }
+  fillRoute() {
+    const c = C[this.lang], ol = this.el.querySelector('.route'); if (!ol) return;
+    const name = (k) => PLACES[k][this.lang === 'ar' ? 'ar' : 'en'];
+    this.el.querySelector('.rl').textContent = `${c.route} (${this.pick.length})`;
+    let prev = this.from, sum = 0;
+    const road = this.legs && this.legs.length === this.pick.length;
+    ol.innerHTML = this.pick.map((k, i) => {
+      const s = PLACES[k], leg = road ? this.legs[i] : Math.hypot(s.x - prev.x, s.z - prev.z) * 1.3;
+      sum += leg;
+      const html = `<li><span class="n">${i + 1}</span><b>${esc(name(k))}</b><small>${arrowTo(prev, s)} ${(leg / 1000).toFixed(1)} ${c.km}</small>
+        <button type="button" data-up="${i}" title="${c.up}" aria-label="${c.up}: ${esc(name(k))}"${i ? '' : ' disabled'}>↑</button><button type="button" data-rm="${i}" title="${c.remove}" aria-label="${c.remove}: ${esc(name(k))}">✕</button></li>`;
+      prev = s;
+      return html;
+    }).join('');
+    const plan = this.el.querySelector('.plan');
+    if (!this.pick.length) { plan.innerHTML = `<span class="hint">${c.empty}</span>`; }
+    else {
+      const km = sum / 1000, mins = Math.max(1, Math.round(km / 32 * 60));
+      const b = B[this.lang];
+      plan.innerHTML = `<b>🚗 ${km.toFixed(1)} ${c.km} ${road ? c.road : c.approx} · ${mins} ${c.min}</b> · ✈ ${c.fly} ${b.about} ${this.estimate(this.pick.map((k) => this.stopFor(k)))} ${b.min}${this.orderNote ? `<br>${this.orderNote}` : ''}`;
+    }
+    this.el.querySelectorAll('[data-a="fly"], [data-a="drive"], [data-a="best"]').forEach((x) => (x.disabled = !this.pick.length || this.planning));
+  }
+  // order the stops for the shortest trip from here, on the real roads when the road network loads
+  async bestOrder() {
+    if (this.planning || !this.pick.length) return;
+    const c = C[this.lang], st = this.pick.map((k) => PLACES[k]), pts = [this.from, ...st], n = pts.length;
+    this.planning = true; this.orderNote = c.planning; this.fillRoute();
+    let road = false;
+    try { road = !!(this.roads && n <= 19 && (await this.roads.ready())); } catch (e) { road = false; }
+    const D = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      for (let j = 1; j < n; j++) {
+        if (i === j) continue;
+        const line = Math.hypot(pts[j].x - pts[i].x, pts[j].z - pts[i].z);
+        const r = road ? this.roads.len(pts[i], pts[j]) : null;
+        D[i][j] = r != null ? r : line * 1.35;
+      }
+      if (road) await new Promise((res) => setTimeout(res));   // keep the page responsive
+    }
+    const order = bestPath(D);
+    const keys = this.pick.slice();
+    this.pick = order.map((i) => keys[i - 1]);
+    this.legs = order.map((i, k) => D[k ? order[k - 1] : 0][i]);
+    if (!road) this.legs = null;
+    this.planning = false; this.orderNote = c.ordered;
+    this.savePick();
+    if (this.phase === 'setup' && this.mode === 'custom') { this.fillPick(); this.fillRoute(); }
   }
   // ---- panel
   render() {

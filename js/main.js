@@ -13,7 +13,7 @@ import { Player } from './player.js';
 import { OSM, RC, F, SEG } from './osm.js';
 import { World } from './world.js';
 import { Cars } from './cars.js';
-import { Guide } from './guide.js';
+import { Guide, GUIDE, CATS } from './guide.js';
 import { Tour, LANGS, ARRIVED } from './tour.js';
 import { TouristPanel } from './tourist.js';
 import { esc } from './util.js';
@@ -453,9 +453,10 @@ document.querySelectorAll('.touch-action').forEach((b) => {
 // a button activated from the keyboard (detail 0) keeps it, so keyboard users do not lose their place
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && e.detail > 0 && !b.closest('#fullmap-modal')) b.blur(); });
 
-function startTour() {
+function startTour(mode) {
   if (!tour) return;
   if (player.mode !== 'car') setMode('car');
+  if (mode) tour.mode = mode;
   tour.open(camera.position.clone(), camLook.clone());
 }
 // ---------- modes, teleports ----------
@@ -912,6 +913,20 @@ async function boot() {
       teleport(t);
     } });
     guide.near = narrate;
+    // the tour builder picks from the guide's landmarks, measures the roads with its router and hands it a route to drive
+    tour.spots = GUIDE; tour.cats = CATS;
+    tour.roads = {
+      ready: () => guide.ensureRouter(),
+      len: (a, b) => { const r = guide.router?.route(a.x, a.z, b.x, b.z); return r ? r.pieces.reduce((t, q) => t + Math.abs(q[2] - q[1]), 0) : null; }
+    };
+    guide.tourPick = {
+      has: (k) => tour.pick.includes(k), count: () => tour.pick.length,
+      toggle: (k) => { const i = tour.pick.indexOf(k); if (i < 0) tour.pick.push(k); else tour.pick.splice(i, 1); tour.legs = null; tour.savePick(); return i < 0; }
+    };
+    tour.onDrive = (keys) => {
+      if (player.mode === 'heli') setMode('car');
+      guide.goPlan(keys.map((k) => GUIDE.find((g) => g.key === k)).filter(Boolean));
+    };
     tourist = new TouristPanel({ osm, player, guide, tour, openTour: startTour });
     tourist.spawn = player.pos.clone();
     $('btn-tourist').onclick = () => tourist.toggle();

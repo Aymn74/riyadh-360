@@ -171,6 +171,46 @@ await test('narration still speaks after a tour was paused and then ended', asyn
   assert(!r.paused && r.spoken > 0, JSON.stringify(r));
 });
 
+await test('food and shopping sort into traditional, fast food, Asian, souqs and malls', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const g = __riyadh.guide, poi = await g.loadPoi();
+    const sub = (re) => (poi.find((p) => re.test(p.en) || re.test(p.ar)) || {}).sub;
+    g.openList('food');
+    await new Promise((res) => setTimeout(res, 300));
+    document.querySelector('#guide-card [data-sub="fast"]').click();
+    await new Promise((res) => setTimeout(res, 300));
+    const shown = [...document.querySelectorAll('#guide-list .g-nm small')].map((e) => e.textContent);
+    return { kudu: sub(/^Kudu$/), bukhara: sub(/Bukhara Alhara/), sushi: sub(/Gold Sushi/), zal: sub(/سوق الزل/), mall: sub(/النخيل مول/), dunkin: sub(/Dunkin/),
+      counted: !!document.querySelector('#guide-card [data-sub="asian"] small'), allFast: shown.length > 0 && shown.every((t) => /وجبات سريعة/.test(t)) };
+  });
+  assert(r.kudu === 'fast' && r.bukhara === 'trad' && r.sushi === 'asian' && r.zal === 'souq' && r.mall === 'mall' && r.dunkin === 'sweet' && r.counted && r.allFast, JSON.stringify(r));
+  await close();
+});
+
+await test('a custom tour orders its stops for the shortest trip and can be driven stop by stop', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const { bestPath } = await import('./js/tour.js');
+    // five points on a line, given out of order: the best open path from the start walks them in order
+    const xs = [0, 4, 1, 3, 2], D = xs.map((a) => xs.map((b) => Math.abs(a - b)));
+    const line = bestPath(D).join();
+    const t = __riyadh.tour, g = __riyadh.guide;
+    t.pick = ['turaif', 'masmak', 'boulevard', 'zal'];
+    __riyadh.startTour('custom');
+    const len = (keys) => { let p = t.from, s = 0; for (const k of keys) { const q = t.spot(k); s += Math.hypot(q.x - p.x, q.z - p.z); p = q; } return s; };
+    const before = len(t.pick);
+    await t.bestOrder();
+    const after = len(t.pick), road = !!t.legs;
+    t.el.querySelector('[data-a="drive"]').click();
+    return { line, before, after, road, order: t.pick.join(), plan: g.plan && g.plan.stops.map((s) => s.key).join(), dest: g.dest && g.dest.key, hidden: t.el.hidden };
+  });
+  assert(r.line === '2,4,3,1' && r.after < r.before && r.road && r.plan === r.order && r.dest === r.order.split(',')[0] && r.hidden, JSON.stringify(r));
+  await close();
+});
+
 for (const [w, h] of [[390, 667], [844, 390], [360, 640]]) {
   await test(`guide, tour and tourist panels fit a ${w}x${h} screen`, async () => {
     const { page, close } = await open({ width: w, height: h, mobile: true });
@@ -181,8 +221,12 @@ for (const [w, h] of [[390, 667], [844, 390], [360, 640]]) {
     inside(await fits('#guide-card'), 'guide');
     await page.evaluate(() => { document.querySelector('#guide-card .g-x').click(); __riyadh.tourist.toggle(true); });
     inside(await fits('#tourist-panel'), 'tourist panel');
-    await page.evaluate(() => { __riyadh.tourist.toggle(false); __riyadh.startTour(); });
+    await page.evaluate(() => { __riyadh.tourist.toggle(false); __riyadh.startTour('ready'); });
     inside(await fits('#tour-panel'), 'tour builder');
+    // the custom builder with a long route still fits, and on a portrait phone its start buttons show without scrolling
+    await page.evaluate(() => { const t = __riyadh.tour; t.pick = ['masmak', 'zal', 'hokm', 'museum', 'murabba', 'kingdom', 'faisaliah', 'boulevard', 'turaif']; __riyadh.startTour('custom'); });
+    inside(await fits('#tour-panel'), 'custom tour builder');
+    if (h > w) inside(await fits('#tour-panel [data-a="drive"]'), 'drive button');
     await close();
   });
 }

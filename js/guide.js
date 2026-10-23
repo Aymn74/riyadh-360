@@ -53,6 +53,45 @@ export const CATS = {
 };
 const POI_KIND = { mall: ['مول', 'shop'], market: ['سوق شعبي', 'shop'], restaurant: ['مطعم', 'food'], fast: ['وجبات سريعة', 'food'], cafe: ['مقهى', 'food'] };
 
+// ---------------------------------------------------------------- finer sorting of food and shopping
+// Most places in OpenStreetMap carry no cuisine tag, so the name decides: مندي and كبسة are traditional,
+// برجر and البيك are fast food, سوشي is Asian. The first rule that matches wins.
+export const SUBS = {
+  food: { all: 'الكل', trad: 'شعبية وسعودية', fast: 'وجبات سريعة', asian: 'آسيوية', intl: 'عالمية', sweet: 'حلويات وعصائر', cafe: 'مقاهٍ', other: 'مطاعم أخرى' },
+  shop: { all: 'الكل', souq: 'أسواق شعبية', mall: 'مولات', centre: 'مراكز ووجهات حديثة' }
+};
+const CUISINE = {
+  trad: ['regional', 'arab', 'saudi', 'middle_eastern', 'lebanese', 'levantine', 'shawarma', 'kebab', 'turkish', 'moroccan', 'yemeni', 'mandi', 'kabsa', 'hummus', 'falafel', 'syrian', 'egyptian'],
+  fast: ['burger', 'chicken', 'sandwich', 'fried_chicken', 'hot_dog', 'friture', 'gourmet_burger', 'wings', 'pizza'],
+  asian: ['chinese', 'japanese', 'sushi', 'indian', 'asian', 'thai', 'korean', 'indonesian', 'malabar', 'pakistani', 'vietnamese', 'filipino', 'indian_and_chinese', 'noodle', 'ramen', 'afghan'],
+  intl: ['italian', 'american', 'mexican', 'french', 'swiss', 'international', 'steak_house', 'seafood', 'fusion', 'peruvian', 'pasta', 'buffet', 'greek', 'spanish', 'breakfast'],
+  sweet: ['dessert', 'donut', 'ice_cream', 'cake', 'pastry', 'bubble_tea', 'juice', 'waffle', 'crepe', 'frozen_yogurt']
+};
+const NAME = [
+  ['sweet', /حلويات|حلا\b|كنافة|كنافه|دونات|آيس ?كريم|ايس ?كريم|جيلاتو|كيك|بسبوسة|عصير|عصائر|وافل|كريب|سينابون|dessert|donut|dunkin|krispy|baskin|gelato|ice ?cream|cake|sweets|juice|waffle|cr[eê]pe|cinnabon/i],
+  ['asian', /صيني|ياباني|هندي|سوشي|تايلندي|تايلاندي|كوري|باكستاني|بنغالي|فلبيني|برياني|chinese|japan|sushi|india|thai|korean|asian|\bwok|noodle|ramen|curry|biryani|pakistan|panda|teriyaki/i],
+  ['intl', /إيطالي|ايطالي|باستا|ستيك|مكسيكي|فرنسي|steak|italian|pasta|mexican|french|bistro|cheesecake factory|applebee|chili'?s|tgi|olive garden|ihop|seafood|مأكولات بحرية|سمك|أسماك|اسماك/i],
+  ['fast', /برجر|برغر|بيتزا|كنتاكي|ماكدونالدز|هرفي|البيك|بروستد|بروست|كودو|هارديز|دومينوز|صب ?واي|بوباي|burger|pizza|kfc|mcdonald|herfy|al ?baik|kudu|hardee|domino|subway|popeyes|chicken|wendy|shake shack|five guys|little caesars|papa john|broa?sted|broast|wings|fries/i],
+  ['trad', /مندي|مندى|كبسة|كبسه|مظبي|حنيذ|مضغوط|بخاري|شعبي|مطبخ|مشويات|مشاوي|شاورما|فلافل|فول|معصوب|مطبق|كباب|يمني|لبناني|بيروت|تركي|سوري|شامي|نجدي|سعودي|mandi|kabsa|shawarma|falafel|kebab|lebanese|beirut|turkish|yemeni|saudi|najd|arabic/i]
+];
+// chains and signature dishes say more than a cuisine tag (Kudu is tagged "regional", Bukhara Alhara "chicken")
+const CHAIN = /كودو|هرفي|البيك|كنتاكي|ماكدونالدز|برجر كنج|هارديز|دومينوز|بيتزا هت|صب ?واي|بوباي|\b(kudu|herfy|al ?baik|kfc|mcdonald'?s|burger king|hardee'?s|domino'?s|pizza hut|subway|popeyes|little caesars|papa john'?s|shake shack|five guys|wendy'?s|maestro pizza|texas chicken)\b/i;
+const DISH = /مندي|مندى|كبسة|كبسه|مظبي|حنيذ|مضغوط|بخاري|منسف|معصوب|مطبق|جريش|قرصان|مرقوق|\b(mandi|kabsa|bukhar\w*|mathbi|haneeth|mansaf|madfoon)\b/i;
+function poiSub(kind, cuisine, ar, en) {
+  const name = ar + ' ' + en;
+  if (kind === 'market') return 'souq';
+  if (kind === 'mall') return /سوق|أسواق|اسواق|حراج|souq|souk/i.test(name) ? 'souq' : /مول|mall/i.test(name) ? 'mall' : 'centre';
+  if (kind !== 'cafe' && CHAIN.test(name)) return 'fast';
+  if (kind !== 'cafe' && DISH.test(name)) return 'trad';
+  const cs = (cuisine || '').toLowerCase().split(';');
+  for (const [sub, list] of Object.entries(CUISINE)) if (cs.some((c) => list.includes(c))) return kind === 'cafe' && sub !== 'sweet' ? 'cafe' : sub;
+  if (kind === 'cafe') return NAME[0][1].test(name) ? 'sweet' : 'cafe';
+  for (const [sub, re] of NAME) if (re.test(name)) return sub;
+  return kind === 'fast' ? 'fast' : 'other';
+}
+// the guide's own shopping and food spots
+const SPOT_SUB = { zal: 'souq', taiba: 'souq', roshnFront: 'centre', boulevard: 'centre', bujairi: 'trad', tahlia: 'cafe' };
+
 const DRIVE = new Set([RC.motorway, RC.trunk, RC.primary, RC.secondary, RC.tertiary, RC.unclassified, RC.residential, RC.living, RC.mlink, RC.link]);
 
 // ---------------------------------------------------------------- routing over the road graph (A*)
@@ -209,12 +248,13 @@ const CSS = `
 #guide-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #guide-card .dist { margin-inline-start: auto; font-size: 12.5px; opacity: .8; }
 .g-btn { height: 38px; padding: 0 14px; border-radius: 9px; border: 0; cursor: pointer; font: 600 14px inherit; font-family: inherit; }
-.g-go { background: #1f9d63; color: #fff; } .g-tour { width: 100%; margin-top: 10px; height: 44px; font-size: 15px; } .g-alt { background: rgba(255,255,255,0.1); color: #fbf6ec; }
+.g-go { background: #1f9d63; color: #fff; } .g-tour { width: 100%; margin-top: 10px; height: 44px; font-size: 15px; } .g-own { margin-top: 6px; } .g-alt { background: rgba(255,255,255,0.1); color: #fbf6ec; }
 .g-x { position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: #fbf6ec; font-size: 20px; cursor: pointer; }
 #guide-card .g-q { width: 100%; height: 40px; margin-top: 10px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.06); color: #fbf6ec; font: inherit; font-size: 14px; padding: 0 12px; box-sizing: border-box; }
 .g-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .g-chip { height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.16); background: transparent; color: #fbf6ec; font: inherit; font-size: 12.5px; cursor: pointer; }
 .g-chip[aria-pressed="true"] { background: #f3d79a; color: #2a1d10; border-color: #f3d79a; }
+.g-chip small { opacity: .65; font-size: 11px; margin-inline-start: 3px; }
 .g-sp { flex: 1; }
 .g-nm { display: grid; gap: 1px; min-width: 0; } .g-nm small { opacity: .6; font-size: 11.5px; }
 .g-empty { opacity: .7; font-size: 13px; padding: 8px 4px; }
@@ -247,7 +287,7 @@ export class Guide {
     });
     this.nav = document.createElement('div'); this.nav.id = 'guide-nav'; this.nav.hidden = true;
     this.nav.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 20 21 12 16.5 4 21Z" fill="#fff"/></svg><div class="t"><b></b><span></span></div><button type="button" aria-label="إلغاء الإرشاد">✕</button>`;
-    this.nav.querySelector('button').addEventListener('click', () => this.clear());
+    this.nav.querySelector('button').addEventListener('click', () => { this.plan = null; this.clear(); });
     document.body.appendChild(this.nav);
     this.toast = document.createElement('div'); this.toast.id = 'guide-toast'; this.toast.hidden = true; document.body.appendChild(this.toast);
     this.card = document.createElement('div'); this.card.id = 'guide-card'; this.card.hidden = true; document.body.appendChild(this.card);
@@ -265,7 +305,10 @@ export class Guide {
         const r = await fetch(this.osm.base + 'riyadh-poi.json');
         if (!r.ok) throw new Error('HTTP ' + r.status);
         const d = await r.json();
-        this.poi = d.poi.map(([kind, lat, lon, name, en, cuisine]) => ({ key: 'poi', kind, lat, lon, ar: name, en: en || name, cuisine, h: 14, cat: POI_KIND[kind][1], tag: POI_KIND[kind][0], ...geoOf(lat, lon) }));
+        this.poi = d.poi.map(([kind, lat, lon, name, en, cuisine]) => {
+          const cat = POI_KIND[kind][1], sub = poiSub(kind, cuisine, name, en || '');
+          return { key: 'poi', kind, lat, lon, ar: name, en: en || name, cuisine, h: 14, cat, sub, tag: POI_KIND[kind][0] + (sub !== 'other' && SUBS[cat][sub] !== POI_KIND[kind][0] ? ' · ' + SUBS[cat][sub] : ''), ...geoOf(lat, lon) };
+        });
         return this.poi;
       } catch (e) { return null; } finally { this.poiP = null; }
     })();
@@ -289,11 +332,13 @@ export class Guide {
     this.cat = this.cat || 'all'; this.sort = this.sort || 'top'; this.q = this.q || ''; this.sub = this.sub || 'all';
     this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>دليل الرياض</h3><div class="en">Riyadh guide · ${GUIDE.length} معلماً ومئات المطاعم والمتاجر</div>
       <button class="g-btn g-go g-tour" type="button">▶ جولة سياحية تلقائية · Guided tour</button>
+      <button class="g-btn g-alt g-tour g-own" type="button">✎ صمّم جولتك بنفسك · Design your tour${this.tourPick?.count() ? ` (${this.tourPick.count()})` : ''}</button>
       <input id="guide-q" class="g-q" type="search" placeholder="ابحث عن معلم أو مطعم أو مول… / Search" value="${this.q.replace(/"/g, '&quot;')}" autocomplete="off">
       <div class="g-chips" role="group" aria-label="الفئات">${Object.entries(CATS).map(([k, [ar]]) => `<button type="button" class="g-chip" data-cat="${k}" aria-pressed="${k === this.cat}">${ar}</button>`).join('')}</div>
       <div class="g-chips g-sub" role="group" aria-label="التصفية"></div>
       <div id="guide-list"></div>`;
-    this.card.querySelector('.g-tour').addEventListener('click', () => { this.hideCard(false); this.clear(); this.startTour?.(); });
+    this.card.querySelector('.g-tour').addEventListener('click', () => { this.hideCard(false); this.clear(); this.startTour?.('ready'); });
+    this.card.querySelector('.g-own').addEventListener('click', () => { this.hideCard(false); this.clear(); this.startTour?.('custom'); });
     this.card.querySelector('.g-x').addEventListener('click', () => this.hideCard());
     const q = this.card.querySelector('#guide-q');
     q.addEventListener('input', () => { this.q = q.value; this.fillList(); });
@@ -309,9 +354,9 @@ export class Guide {
   }
   async fillList() {
     const p = this.player.pos, cat = this.cat, q = this.q.trim().toLowerCase();
-    const subs = cat === 'shop' ? { all: 'الكل', mall: 'مولات', market: 'أسواق شعبية' } : cat === 'food' ? { all: 'الكل', restaurant: 'مطاعم', fast: 'وجبات سريعة', cafe: 'مقاهٍ' } : null;
+    const subs = SUBS[cat] || null, counts = this.poi && subs ? this.subCounts(cat) : null;
     const subEl = this.card.querySelector('.g-sub');
-    subEl.innerHTML = `${subs ? Object.entries(subs).map(([k, t]) => `<button type="button" class="g-chip" data-sub="${k}" aria-pressed="${k === this.sub}">${t}</button>`).join('') : ''}
+    subEl.innerHTML = `${subs ? Object.entries(subs).map(([k, t]) => `<button type="button" class="g-chip" data-sub="${k}" aria-pressed="${k === this.sub}">${t}${counts && k !== 'all' ? ` <small>${counts[k] || 0}</small>` : ''}</button>`).join('') : ''}
       <span class="g-sp"></span><button type="button" class="g-chip" data-sort="top" aria-pressed="${this.sort === 'top'}">الأهم</button><button type="button" class="g-chip" data-sort="near" aria-pressed="${this.sort === 'near'}">الأقرب</button>`;
     subEl.querySelectorAll('[data-sub]').forEach((b) => b.addEventListener('click', () => { this.sub = b.dataset.sub; this.fillList(); }));
     subEl.querySelectorAll('[data-sort]').forEach((b) => b.addEventListener('click', () => { this.sort = b.dataset.sort; this.fillList(); }));
@@ -328,9 +373,10 @@ export class Guide {
         list.querySelector('[data-retry]').addEventListener('click', () => this.fillList());
         return;
       }
-      const extra = poi.filter((g) => (cat === 'all' || g.cat === cat) && (this.sub === 'all' || g.kind === this.sub) && match(g))
-        .map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z), tag: g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') }));
-      if (this.sub !== 'all') items = items.filter(({ g }) => (this.sub === 'market' ? /سوق/.test(g.ar) : this.sub === 'mall' ? !/سوق/.test(g.ar) : false));
+      if (!subEl.querySelector('small') && SUBS[cat]) { this.fillList(); return; }   // now the counts are known
+      const extra = poi.filter((g) => (cat === 'all' || g.cat === cat) && (this.sub === 'all' || g.sub === this.sub) && match(g))
+        .map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z), tag: g.tag }));
+      if (this.sub !== 'all') items = items.filter(({ g }) => this.spotSub(g) === this.sub);
       items = items.concat(extra);
     }
     // "most important": the curated landmarks by rank, then the rest by distance
@@ -345,13 +391,22 @@ export class Guide {
     }
     if (items.length > shown.length) list.insertAdjacentHTML('beforeend', `<div class="g-empty">و${items.length - shown.length} غيرها؛ ابحث بالاسم أو اختر «الأقرب».</div>`);
   }
+  spotSub(g) { return SPOT_SUB[g.key] || (g.cat === 'shop' ? 'mall' : 'other'); }
+  subCounts(cat) {
+    const n = {};
+    for (const g of this.poi) if (g.cat === cat) n[g.sub] = (n[g.sub] || 0) + 1;
+    for (const g of GUIDE) if (g.cat === cat) { const k = this.spotSub(g); n[k] = (n[k] || 0) + 1; }
+    return n;
+  }
   open(g) {
     const p = this.player.pos, d = Math.hypot(g.x - p.x, g.z - p.z);
-    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${esc(g.ar)}</h3><div class="en">${g.en !== g.ar ? esc(g.en) : ''}</div><p>${esc(g.desc || (g.tag ? g.tag + (g.cuisine ? ' · ' + g.cuisine.replace(/_/g, ' ') : '') + ' من خريطة OpenStreetMap.' : ''))}</p>
-      <div class="row"><button class="g-btn g-go" type="button" data-a="go">خذني إليه</button><button class="g-btn g-alt" type="button" data-a="jump">انتقال فوري</button><span class="dist">على بعد ${fmtDist(d)}</span></div>`;
+    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>${esc(g.ar)}</h3><div class="en">${g.en !== g.ar ? esc(g.en) : ''}</div><p>${esc(g.desc || (g.tag ? g.tag + ' من خريطة OpenStreetMap.' : ''))}</p>
+      <div class="row"><button class="g-btn g-go" type="button" data-a="go">خذني إليه</button><button class="g-btn g-alt" type="button" data-a="jump">انتقال فوري</button>${this.tourPick && g.key !== 'poi' ? `<button class="g-btn g-alt" type="button" data-a="pick" aria-pressed="${this.tourPick.has(g.key)}">${this.tourPick.has(g.key) ? '✓ في جولتي' : '＋ أضف إلى جولتي'}</button>` : ''}<span class="dist">على بعد ${fmtDist(d)}</span></div>`;
     this.card.querySelector('.g-x').addEventListener('click', () => this.hideCard());
-    this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.hideCard(); this.go(g); });
+    this.card.querySelector('[data-a="go"]').addEventListener('click', () => { this.hideCard(); this.plan = null; this.go(g); });
     this.card.querySelector('[data-a="jump"]').addEventListener('click', () => { this.hideCard(); this.clear(); this.teleport(g); });
+    const pk = this.card.querySelector('[data-a="pick"]');
+    if (pk) pk.addEventListener('click', () => { const on = this.tourPick.toggle(g.key); pk.setAttribute('aria-pressed', on); pk.textContent = on ? '✓ في جولتي' : '＋ أضف إلى جولتي'; });
     this.showCard();
   }
   // the card takes the focus when it opens and gives it back to whatever opened it
@@ -366,10 +421,17 @@ export class Guide {
     if (restore && this.opener && document.contains(this.opener)) this.opener.focus({ preventScroll: true });
     this.opener = null;
   }
+  // guidance through a chain of stops: on arrival at one, guidance moves on to the next
+  goPlan(stops) {
+    if (!stops.length) return;
+    this.plan = { stops, i: 0 };
+    this.go(stops[0]);
+  }
   async go(g) {
     this.dest = g; this.route = null; this.build([]);
     this.nav.hidden = false;
-    this.nav.querySelector('b').textContent = 'إلى ' + g.ar;
+    const P = this.plan;
+    this.nav.querySelector('b').textContent = 'إلى ' + g.ar + (P && P.stops[P.i] === g ? ` · المحطة ${P.i + 1} من ${P.stops.length}` : '');
     if (!this.router) {
       this.nav.querySelector('span').textContent = 'جارٍ تحميل شبكة الطرق…';
       this.loading = true;
@@ -505,7 +567,17 @@ export class Guide {
     // guidance
     if (!this.dest || this.loading) return;
     const g = this.dest, left = Math.hypot(g.x - p.x, g.z - p.z);
-    if (left < (g.h > 150 ? 220 : 140)) { if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc); this.seen.set(g.key, performance.now()); this.clear(); return; }
+    if (left < (g.h > 150 ? 220 : 140)) {
+      if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc);
+      this.seen.set(g.key, performance.now()); this.clear();
+      const P = this.plan;
+      if (P && P.stops[P.i] === g) {
+        P.i++;
+        if (P.i < P.stops.length) this.go(P.stops[P.i]);
+        else { this.plan = null; setTimeout(() => this.note('انتهى مسارك', `زرت المحطات الـ${P.stops.length} كلها.`), 8500); }
+      }
+      return;
+    }
     let tx = g.x, tz = g.z, remain = left;
     const R = this.route, mode = this.player.mode === 'person' ? 'walk' : this.player.mode === 'car' ? 'car' : null;
     if (mode && this.router && this.routeMode && mode !== this.routeMode && performance.now() - this.lastReroute > 1000) { this.reroute(); return; }

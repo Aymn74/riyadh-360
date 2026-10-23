@@ -35,7 +35,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 ### دليل الرياض (زر البوصلة)
 - **39 معلماً** في ثماني فئات: تاريخ وتراث، أبراج ومعمار، متاحف وثقافة، مساجد، جامعات، ترفيه وحدائق، تسوق، مطاعم ومقاهٍ. من بينها المصمك وسوق الزل وقصر المربع وقصر الحكم وبرج المملكة وجامعة الملك سعود والبوليفارد والطريف.
 - **بحث بالاسم وترتيب** حسب الأهمية أو حسب القرب.
-- **التسوق والمطاعم:** 1,284 مكاناً بأسمائها من الخريطة المفتوحة: مولات، وأسواق شعبية، ومطاعم، ووجبات سريعة، ومقاهٍ.
+- **التسوق والمطاعم:** 1,284 مكاناً بأسمائها من الخريطة المفتوحة، مفرزة إلى: مطاعم شعبية وسعودية، ووجبات سريعة، وآسيوية، وعالمية، وحلويات وعصائر، ومقاهٍ؛ وفي التسوق: أسواق شعبية، ومولات، ومراكز ووجهات حديثة.
 - **"خذني إليه":** يرسم مساراً على الطرق الفعلية، مع سهم اتجاه والمسافة والوقت، ويعيد الحساب إذا خرجت عن المسار.
 - **بطاقات عائمة** فوق المعالم في المشهد، مع المسافة إليها.
 
@@ -45,6 +45,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **ثلاث مدد:** قصيرة، متوسطة، كاملة.
 - **ست لغات:** العربية، والإنجليزية، والفرنسية، والإسبانية، والألمانية، والصينية.
 - إيقاف مؤقت، والانتقال إلى التالي، وسرعة ×1 و×1.5 و×2.
+- **صمّم جولتك بنفسك:** اختر بحرية من قائمة كل المعالم، واقرأ نبذة عن كل معلم قبل إضافته، ورتّب المسار كما تشاء.
+- **اقترح أفضل مسار:** يرتّب المحطات لأقصر طريق يبدأ من موقعك، بمسافات الطرق الفعلية، ويعرض اتجاه كل مرحلة ومسافتها والمسافة الكلية ووقت القيادة. ثم اختر جولة جوية مع الراوي، أو قيادة على المسار ينتقل فيها الإرشاد من محطة إلى التالية.
 
 ### الراوي أثناء التجوال (زر السماعة)
 يحكي قصة كل معلم تقترب منه، ويذكر اسم الحي حين تدخله، باللغة التي تختارها.
@@ -70,7 +72,9 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ### Riyadh guide (compass button, `G`)
 - **39 landmarks** in eight categories, with search and sorting by importance or distance.
-- **Shopping and food:** 1,284 named malls, souqs, restaurants, fast-food places and cafés from OpenStreetMap.
+- **Shopping and food:** 1,284 named places from OpenStreetMap, sorted into traditional and Saudi, fast food, Asian,
+  international, sweets and juice, and cafés; and for shopping into traditional souqs, malls and modern centres.
+  Most places carry no cuisine tag, so chains and signature dishes in the name decide (مندي, كبسة, Kudu, sushi).
 - **"Take me there"** draws a route on the real roads, with a direction arrow, distance and time, and reroutes when you leave it.
 
 ### Guided tour
@@ -79,6 +83,10 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **Three lengths:** short, medium, full.
 - **Six languages:** Arabic, English, French, Spanish, German, Chinese.
 - **Playback:** pause, skip, and ×1 / ×1.5 / ×2 speed.
+- **Design your own tour:** pick freely from every landmark, read about each one before adding it, and reorder the route.
+- **Suggest the best route** orders the stops for the shortest trip from where you are, on real road distances, and
+  shows each leg's direction and length, the total distance and the driving time. Then take it as a flying tour with
+  the narrator, or drive it: guidance moves on to the next stop each time you arrive.
 
 ### Narrator and tourist panel
 - **The narrator (speaker button)** tells each landmark's story as you approach it, and names each district as you enter it.
@@ -102,6 +110,11 @@ Narration uses the browser's own speech voices, so the voices available depend o
 **On a phone · على الجوال:** the guided tour with narration, the guide with shopping and food, the tourist panel with prayer times, and road guidance with the driving pedals.
 
 <img src="docs/phone.jpg" alt="Four phone screens: the guided tour, the guide's food list, the tourist panel and road guidance" width="100%">
+
+**Design your own tour · صمّم جولتك:** read about a landmark before adding it, the route ordered by road with each leg's
+direction and length, and the food list sorted into traditional, fast food, Asian and more.
+
+<img src="docs/custom-tour.jpg" alt="Four phone screens: picking landmarks with their notes, the best route by road, and the food filters" width="100%">
 
 ## Controls
 
@@ -160,7 +173,8 @@ To run it locally, serve the folder with any static server (for example `npx ser
 
 The tests open the full site in a browser and check what a visitor relies on: map names shown as text and never
 run, recovery after failed downloads, routes by car and on foot to every landmark, panels that fit small phone
-screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, and narration after a pause.
+screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the sorting
+of food and shopping, and the best order of a custom tour.
 They run on every push (GitHub Actions, `.github/workflows/test.yml`).
 
 ```
