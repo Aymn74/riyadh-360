@@ -2,7 +2,6 @@
 import * as THREE from 'three';
 import { TH } from './geo.js';
 import { F } from './osm.js';
-import { buildCarGeometry, makeCarMaterial } from './traffic.js';
 import { LANDMARK_COLLIDERS } from './landmarks.js';
 
 function shemaghTexture() {
@@ -38,12 +37,135 @@ function buildPerson() {
   return g;
 }
 
-function buildCar() {
+// a white Land Cruiser LC300 (4.95 x 1.98 x 1.93 m), nose towards +x.
+// The body is lofted from rounded cross-sections, so it has real curvature, tumblehome and wheel arches.
+const lerpT = (tab, x) => {
+  if (x <= tab[0][0]) return tab[0].slice(1);
+  for (let i = 1; i < tab.length; i++) if (x <= tab[i][0]) {
+    const [x0, ...a] = tab[i - 1], [x1, ...b] = tab[i], t = (x - x0) / (x1 - x0), u = t * t * (3 - 2 * t);
+    return a.map((v, k) => v + (b[k] - v) * u);
+  }
+  return tab[tab.length - 1].slice(1);
+};
+// a closed loft through sections of equal point count; colour per vertex; flat end caps
+function loft(xs, section, colorAt) {
+  const pos = [], col = [], idx = [];
+  let n = 0;
+  for (const x of xs) { const ring = section(x); n = ring.length; for (const [z, y] of ring) { pos.push(x, y, z); const c = colorAt(x, y, z); col.push(c.r, c.g, c.b); } }
+  for (let i = 0; i < xs.length - 1; i++) for (let j = 0; j < n; j++) {
+    const a = i * n + j, b = i * n + (j + 1) % n, c = a + n, d = b + n;
+    idx.push(a, c, b, b, c, d);
+  }
+  for (const [i, flip] of [[0, true], [xs.length - 1, false]]) {
+    let cy = 0, cz = 0; for (let j = 0; j < n; j++) { cz += pos[(i * n + j) * 3 + 2]; cy += pos[(i * n + j) * 3 + 1]; }
+    const ci = pos.length / 3; pos.push(xs[i], cy / n, cz / n); col.push(col[i * n * 3], col[i * n * 3 + 1], col[i * n * 3 + 2]);
+    for (let j = 0; j < n; j++) { const a = i * n + j, b = i * n + (j + 1) % n; if (flip) idx.push(ci, b, a); else idx.push(ci, a, b); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return g;
+}
+// rounded box section: half widths at bottom and top (tumblehome), corner radii, extra points to pin colour bands
+function roundSection(y0, y1, hwB, hwT, rB, rT, bands = []) {
+  const pts = [];
+  const arc = (cz, cy, r, a0, a1, k) => { for (let i = 0; i <= k; i++) { const a = a0 + (a1 - a0) * (i / k); pts.push([cz + Math.cos(a) * r, cy + Math.sin(a) * r]); } };
+  rB = Math.min(rB, (y1 - y0) * 0.45); rT = Math.min(rT, (y1 - y0) * 0.45);
+  // band points are always emitted (clamped) so every section has the same point count
+  const side = (s) => { const lo = y0 + rB + 0.002, hi = y1 - rT - 0.002; const ys = bands.map((b, i) => Math.min(hi - (bands.length - i) * 0.001, Math.max(lo + i * 0.001, b))); return s > 0 ? ys : ys.slice().reverse(); };
+  arc(hwB - rB, y0 + rB, rB, -Math.PI / 2, 0, 3);                                   // bottom right
+  for (const y of side(1)) pts.push([hwB + (hwT - hwB) * (y - y0) / (y1 - y0), y]);
+  arc(hwT - rT, y1 - rT, rT, 0, Math.PI / 2, 5);                                     // top right
+  arc(-hwT + rT, y1 - rT, rT, Math.PI / 2, Math.PI, 5);                              // top left
+  for (const y of side(-1)) pts.push([-(hwB + (hwT - hwB) * (y - y0) / (y1 - y0)), y]);
+  arc(-hwB + rB, y0 + rB, rB, Math.PI, Math.PI * 1.5, 3);                            // bottom left
+  return pts;
+}
+export function buildCar() {
   const g = new THREE.Group();
-  const m = new THREE.Mesh(buildCarGeometry('suv'), makeCarMaterial());
-  m.material.color.set('#f4f4f2');
-  m.castShadow = true;
-  g.add(m);
+  const WHITE = new THREE.Color('#f2f2ef'), CLAD = new THREE.Color('#2a2b2d'), GLASS = new THREE.Color('#0d1419'), PILLAR = new THREE.Color('#121315');
+  const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.26, metalness: 0.12, envMapIntensity: 1.3 });
+  const glassMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.08, metalness: 0.35, envMapIntensity: 1.8 });
+  const trim = new THREE.MeshStandardMaterial({ color: '#1b1c1e', roughness: 0.6 });
+  const chrome = new THREE.MeshStandardMaterial({ color: '#e2e5e8', roughness: 0.12, metalness: 1.0 });
+  const head = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#fff6e0', emissiveIntensity: 1.4, roughness: 0.15 });
+  const tail = new THREE.MeshStandardMaterial({ color: '#6a0808', emissive: '#ff2414', emissiveIntensity: 0.8, roughness: 0.25 });
+  const WX = [1.47, -1.43], AR = 0.5;
+  // lower body: [x, sill, top, half width bottom, half width top, top radius]
+  const BODY = [[-2.48, 0.56, 1.18, 0.88, 0.84, 0.10], [-2.44, 0.44, 1.27, 0.97, 0.93, 0.13], [-2.25, 0.42, 1.30, 0.99, 0.95, 0.14], [0.9, 0.42, 1.29, 0.99, 0.95, 0.14],
+    [1.6, 0.42, 1.24, 0.99, 0.94, 0.15], [2.15, 0.43, 1.17, 0.97, 0.92, 0.16], [2.38, 0.46, 1.08, 0.93, 0.88, 0.15], [2.48, 0.58, 0.99, 0.84, 0.8, 0.12]];
+  const archAt = (x) => { let y = 0; for (const wx of WX) { const d = Math.abs(x - wx); if (d < AR) y = Math.max(y, Math.sqrt(AR * AR - d * d) + 0.4 - 0.42); } return y; };
+  const xs = []; for (let x = -2.48; x <= 2.4801; x += 0.04) xs.push(+x.toFixed(3));
+  const body = loft(xs, (x) => {
+    const [y0, y1, hb, ht, rT] = lerpT(BODY, x);
+    return roundSection(Math.max(y0, 0.42 + archAt(x) * 0.999), y1, hb, ht, 0.06, rT, [0.62, 0.66]);
+  }, (x, y) => (y < 0.64 || Math.abs(x) > 2.4 && y < 0.72 ? CLAD : WHITE));
+  // glasshouse: [x, belt, roof, half width at belt, half width at roof]; roof skin and D pillars stay white
+  const GH = [[-2.42, 1.26, 1.62, 0.92, 0.80], [-2.36, 1.26, 1.83, 0.93, 0.80], [-2.2, 1.27, 1.89, 0.93, 0.81], [0.05, 1.27, 1.9, 0.93, 0.81],
+    [0.4, 1.27, 1.77, 0.93, 0.80], [0.8, 1.27, 1.52, 0.93, 0.84], [1.08, 1.26, 1.3, 0.93, 0.9]];
+  const ghx = []; for (let x = -2.42; x <= 1.0801; x += 0.035) ghx.push(+x.toFixed(3));
+  const gh = loft(ghx, (x) => { const [yb, yr, hb, hr] = lerpT(GH, x); return roundSection(yb, yr, hb, hr, 0.02, 0.09, [1.3, 1.34]); },
+    (x, y, z) => {
+      const yr = lerpT(GH, x)[1];
+      if (y > yr - 0.07 && Math.abs(z) < 0.74) return WHITE;                 // roof skin
+      if (y < 1.31) return PILLAR;                                            // window surround
+      if (x < -1.98 && x > -2.34 && Math.abs(z) > 0.6) return WHITE;          // D pillar
+      if (Math.abs(x + 0.35) < 0.06 || Math.abs(x + 1.42) < 0.06) return PILLAR;   // B and C pillars
+      return GLASS;
+    });
+  const bm = new THREE.Mesh(body, bodyMat), gm = new THREE.Mesh(gh, glassMat);
+  bm.castShadow = gm.castShadow = true;
+  g.add(bm, gm);
+  // dark underbody seen through the arches
+  const under = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.5, 1.4), trim); under.position.set(0, 0.62, 0); g.add(under);
+  // wheels: tyre with rounded shoulders, six-spoke alloy
+  const tyreGeo = new THREE.LatheGeometry([[0.25, -0.14], [0.37, -0.14], [0.405, -0.11], [0.415, 0], [0.405, 0.11], [0.37, 0.14], [0.25, 0.14]].map(([r, y]) => new THREE.Vector2(r, y)), 28).rotateX(Math.PI / 2);
+  const tyreMat = new THREE.MeshStandardMaterial({ color: '#151515', roughness: 0.92 });
+  const rimMat = new THREE.MeshStandardMaterial({ color: '#c4c8cc', roughness: 0.28, metalness: 0.9 });
+  const rimDisk = new THREE.CylinderGeometry(0.26, 0.26, 0.2, 24).rotateX(Math.PI / 2);
+  const spoke = new THREE.BoxGeometry(0.42, 0.06, 0.04);
+  const wheels = [];
+  for (const x of WX) for (const z of [-0.84, 0.84]) {
+    const w = new THREE.Group(), spin = new THREE.Group();
+    const t = new THREE.Mesh(tyreGeo, tyreMat); t.castShadow = true;
+    spin.add(t, new THREE.Mesh(rimDisk, new THREE.MeshStandardMaterial({ color: '#2a2c2f', roughness: 0.5, metalness: 0.6 })));
+    for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(spoke, rimMat); sp.rotation.z = k * Math.PI / 6 * 2 / 2; sp.position.z = Math.sign(z) * 0.11; spin.add(sp); }
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.05, 12).rotateX(Math.PI / 2), chrome); hub.position.z = Math.sign(z) * 0.125; spin.add(hub);
+    w.add(spin); w.position.set(x, 0.415, z); g.add(w); wheels.push({ w, spin });
+    // black arch flare
+    const flare = new THREE.Mesh(new THREE.TorusGeometry(AR + 0.02, 0.045, 6, 20, Math.PI), trim);
+    flare.position.set(x, 0.4, Math.sign(z) * 0.975); g.add(flare);
+  }
+  g.userData.wheels = wheels;
+  // face: big grille with chrome surround and bars, slim headlamps, bumper
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.36, 1.08), trim); grille.position.set(2.47, 0.8, 0); g.add(grille);
+  for (const y of [0.64, 0.98]) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 1.12), chrome); b.position.set(2.49, y, 0); g.add(b); }
+  for (let k = 0; k < 4; k++) { const b = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 1.04), chrome); b.position.set(2.495, 0.7 + k * 0.075, 0); g.add(b); }
+  const fb = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 1.7), trim); fb.position.set(2.45, 0.52, 0); g.add(fb);
+  const rb = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 1.75), trim); rb.position.set(-2.46, 0.54, 0); g.add(rb);
+  for (const z of [-1, 1]) {
+    const h = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, 0.36), head); h.position.set(2.42, 1.03, z * 0.7); h.rotation.y = z * 0.25; g.add(h);
+    const drl = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.02, 0.3), head); drl.position.set(2.44, 0.96, z * 0.68); g.add(drl);
+    const fog = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.16), head); fog.position.set(2.5, 0.54, z * 0.72); g.add(fog);
+    // tail lamps wrap the rear corners
+    const t1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.34, 0.2), tail); t1.position.set(-2.45, 1.08, z * 0.8); g.add(t1);
+    const t2 = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.12, 0.05), tail); t2.position.set(-2.35, 1.18, z * 0.965); g.add(t2);
+    // mirrors on stalks
+    const mir = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.2), new THREE.MeshStandardMaterial({ color: '#f2f2ef', roughness: 0.3 })); mir.position.set(0.9, 1.38, z * 1.1); g.add(mir);
+    const stalk = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.16), trim); stalk.position.set(0.95, 1.32, z * 0.98); g.add(stalk);
+    // door handles, side step, roof rail
+    for (const x of [0.15, -1.0]) { const dh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.035, 0.03), chrome); dh.position.set(x, 1.12, z * 0.985); g.add(dh); }
+    const step = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.05, 0.16), trim); step.position.set(-0.03, 0.36, z * 0.93); g.add(step);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.05, 0.05), trim); rail.position.set(-1.0, 1.93, z * 0.7); g.add(rail);
+  }
+  // tailgate glass, leaning in towards the roof, and a small roof spoiler above it
+  const rg = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.44, 1.46), glassMat.clone()); rg.material.vertexColors = false; rg.material.color.copy(GLASS);
+  rg.position.set(-2.405, 1.58, 0); rg.rotation.z = -0.26; g.add(rg);
+  const spoiler = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 1.5), bodyMat.clone()); spoiler.material.vertexColors = false; spoiler.material.color.copy(WHITE);
+  spoiler.position.set(-2.36, 1.86, 0); spoiler.rotation.z = 0.12; g.add(spoiler);
+  // chrome strip and "LAND CRUISER" bar on the tailgate
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.05, 1.1), chrome); strip.position.set(-2.475, 1.16, 0); g.add(strip);
   // rear plate: Saudi format, KSA / السعودية
   const c = document.createElement('canvas'); c.width = 256; c.height = 96;
   const x = c.getContext('2d');
@@ -53,8 +175,9 @@ function buildCar() {
   x.fillText('٧٤٢٠  ر ي ض', 100, 40); x.fillText('7420  R Y D', 100, 82);
   x.fillStyle = '#0a7a3a'; x.fillRect(206, 4, 46, 88);
   x.fillStyle = '#fff'; x.font = '700 16px sans-serif'; x.fillText('KSA', 229, 82);
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
-  plate.position.set(-2.49, 0.85, 0); plate.rotation.y = -Math.PI / 2;
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.2), new THREE.MeshBasicMaterial({ map: tex }));
+  plate.position.set(-2.53, 0.8, 0); plate.rotation.y = -Math.PI / 2;
   g.add(plate);
   // headlight cones at night
   const spot = new THREE.SpotLight('#fff3dc', 0, 90, 0.5, 0.5, 1.2);
@@ -62,6 +185,7 @@ function buildCar() {
   spot.target.position.set(20, 0, 0);
   g.add(spot, spot.target);
   g.userData.spot = spot;
+  g.userData.lights = { head, tail };
   return g;
 }
 
@@ -224,6 +348,9 @@ export class Player {
       m.rotation.set(0, this.yaw, 0);
       m.rotateZ(THREE.MathUtils.clamp(this.pitch, -0.03, 0.03));
       m.rotateX(-this.steer * Math.min(1, v / 25) * 0.035);
+      m.userData.lights.tail.emissiveIntensity = acc < -1 && this.speed > 0.5 ? 2.6 : 0.8;   // brake lights
+      this.wheelRot = ((this.wheelRot || 0) - this.speed * dt / 0.4) % (Math.PI * 2);
+      for (const [i, { w, spin }] of m.userData.wheels.entries()) { w.rotation.y = i < 2 ? this.steer * 0.45 : 0; spin.rotation.z = this.wheelRot; }
     } else {
       const maxV = boost ? 70 : 50;   // 250 / 180 km/h
       const target = fwd * maxV;

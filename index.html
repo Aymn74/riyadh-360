@@ -192,6 +192,23 @@ body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { displ
   #touch-controls { padding-block: 0 calc(16px + env(safe-area-inset-bottom, 0px)); padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
   .hud-bottom { justify-content: center; }
 }
+/* driving on a touch screen: steer with the left thumb, pedals under the right */
+.pedals { display: flex; gap: 10px; align-items: flex-end; direction: ltr; }
+.pedal { border-radius: 16px; width: 70px; }
+.pedal.brake { height: 74px; background: rgba(60,22,18,0.65); }
+.pedal.gas { height: 108px; background: rgba(20,60,40,0.65); }
+.pedal[aria-pressed="true"].gas { background: #1f9d63; color: #fff; } .pedal[aria-pressed="true"].brake { background: #c0392b; color: #fff; }
+body.driving-touch .touch-actions { display: flex; align-items: flex-end; gap: 10px; direction: ltr; }
+body.driving-touch .touch-action[data-touch-action="boost"] { width: 54px; height: 54px; font-size: 11px; }
+/* phones upright: the middle of the screen is the road ahead, so the map and the sign sit low on the right, above the turbo button */
+@media (pointer: coarse) and (orientation: portrait) {
+  .dock-start { top: auto; bottom: calc(206px + env(safe-area-inset-bottom, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); flex-direction: row; align-items: flex-end; gap: 8px; }
+  .radar { width: 82px; height: 82px; opacity: .92; }
+  .sign { max-width: 132px; padding: 4px 8px 5px; border-width: 1.5px; border-radius: 6px; }
+  .sign-ar { font-size: 12.5px; line-height: 1.3; }
+  .sign-en { display: none; }
+  .toolbar .time-btn, .toolbar .tool-btn { height: 30px; padding: 0 7px; }
+}
 /* computers: only the climb and descend buttons, at the right edge, while flying */
 @media (pointer: fine) {
   #touch-stick, .touch-action[data-touch-action="boost"] { display: none; }
@@ -211,6 +228,7 @@ body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { displ
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M19.5 14.6A7.8 7.8 0 0 1 9.4 4.5a7.8 7.8 0 1 0 10.1 10.1z"/></symbol>
     <symbol id="i-wind" viewBox="0 0 24 24"><path d="M3 8.5h11.5a2.8 2.8 0 1 0-2.8-2.8M3 12.5h16a2.8 2.8 0 1 1-2.8 2.8M3 16.5h8"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.2s-6.6-5.7-6.6-11.2a6.6 6.6 0 0 1 13.2 0c0 5.5-6.6 11.2-6.6 11.2z"/><circle cx="12" cy="10" r="2.4"/></symbol>
+    <symbol id="i-guide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/></symbol>
     <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4.5 3.5 6.6v13l5.5-2.1 6 2.1 5.5-2.1v-13L15 6.6 9 4.5zM9 4.5v13M15 6.6v13"/></symbol>
     <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
     <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M3.5 3.5l17 17M10.6 5.6c.5-.1.9-.1 1.4-.1 6 0 9.5 6.5 9.5 6.5a16 16 0 0 1-2.4 3.2M6.6 6.6A15.6 15.6 0 0 0 2.5 12s3.5 6.5 9.5 6.5c1.6 0 3.1-.4 4.4-1.1M9.9 9.9a2.8 2.8 0 0 0 4.2 4.2"/></symbol>
@@ -255,6 +273,7 @@ body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { displ
           <button class="time-btn" data-time="haboob" type="button" title="عاصفة رملية (هبوب)"><svg class="icon" aria-hidden="true"><use href="#i-wind"/></svg><span class="seg-label">هبوب</span></button>
         </div>
         <span class="toolbar-divider" aria-hidden="true"></span>
+        <button id="btn-guide" class="tool-btn" type="button" title="دليل المعالم [G]"><svg class="icon" aria-hidden="true"><use href="#i-guide"/></svg><span class="tool-label">الدليل</span></button>
         <button class="tool-btn" type="button" popovertarget="teleport-popover" title="انتقال سريع"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span class="tool-label">انتقال</span></button>
         <button id="btn-open-map" class="tool-btn" type="button" title="خريطة الرياض [M]"><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><span class="tool-label">الخريطة</span><kbd>M</kbd></button>
         <button id="btn-toggle-hud" class="tool-btn icon-only" type="button" title="إخفاء الواجهة [H]" aria-label="إخفاء الواجهة" aria-pressed="false">
@@ -335,6 +354,10 @@ body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { displ
       <button class="touch-action" data-touch-action="up" type="button" aria-pressed="false"><span aria-hidden="true">↑</span><span data-touch-label="up">قفز</span></button>
       <button class="touch-action" data-touch-action="down" type="button" aria-pressed="false" hidden><span aria-hidden="true">↓</span><span>هبوط</span></button>
       <button class="touch-action" data-touch-action="boost" type="button" aria-pressed="false"><span>تيربو</span></button>
+      <div class="pedals" hidden>
+        <button class="touch-action pedal brake" data-touch-action="brake" type="button" aria-pressed="false"><span>فرامل</span></button>
+        <button class="touch-action pedal gas" data-touch-action="gas" type="button" aria-pressed="false"><span>وقود</span></button>
+      </div>
     </div>
   </section>
 </div>

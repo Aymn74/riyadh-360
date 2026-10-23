@@ -122,6 +122,8 @@ CLS = {'motorway': 0, 'trunk': 1, 'primary': 2, 'secondary': 3, 'tertiary': 4, '
 WIDTH = {0: (11.5, 22), 1: (11, 21), 2: (10.5, 16), 3: (9, 14), 4: (7.5, 12), 5: (7, 9), 6: (7.5, 10), 7: (6, 7), 8: (4.5, 5.5),
          9: (6.5, 9), 10: (6.5, 9), 11: (6, 8)}
 roads = []
+DRIVE_CLS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}
+route_raw = []    # (road index, raw OSM nodes in driving order, simplified points) for the routing graph
 prof = []         # (road index, deck/floor height, first point, last point)
 road_lines = []   # for the fill rasteriser: (pts, width, cls)
 n_tunnel = 0
@@ -173,10 +175,41 @@ for osm_id, g, name, hw, other in con.execute("select osm_id, geom, name, highwa
             prof.append((len(roads), -7.0 * max(1, min(3, -layer if layer < 0 else 1)), p[0], p[-1]))
         elif t.get('cutting') in ('yes', 'both', 'left', 'right') or (layer < 0):
             prof.append((len(roads), -6.5, p[0], p[-1]))
+        if cls in DRIVE_CLS:
+            raw = [tuple(q) for q in ln]
+            route_raw.append((len(roads), raw[::-1] if rev else raw, p))
         roads.append((cls | flags << 8 | min(lanes, 15) << 16 | int(width * 10 / 2) << 24, (0xFFFF if nid == 0xFFFFFFFF else nid) | maxspeed << 16, s, n))
         if not tunnel:
             road_lines.append((p, width, cls))
 road_pt_end = len(PTS['road']) // 2
+# Routing graph: junctions are OSM nodes shared by two drivable ways (often mid-way, which the simplified
+# polylines lose), plus way ends. Edges run between consecutive junctions of one way, as distances along that way.
+uses = {}
+for r, raw, _ in route_raw:
+    for q in set(raw):
+        uses[q] = uses.get(q, 0) + 1
+node_id, r_nodes, r_edges = {}, [], []
+def nid_of(q):
+    if q not in node_id:
+        node_id[q] = len(r_nodes) // 2
+        r_nodes.extend(xz(*q))
+    return node_id[q]
+for r, raw, simp in route_raw:
+    L_s = sum(math.dist(simp[i], simp[i + 1]) for i in range(len(simp) - 1))
+    pts_m = [xz(*q) for q in raw]
+    L_r = sum(math.dist(pts_m[i], pts_m[i + 1]) for i in range(len(pts_m) - 1)) or 1.0
+    k = L_s / L_r
+    along, prev = 0.0, None
+    for i, q in enumerate(raw):
+        if i:
+            along += math.dist(pts_m[i - 1], pts_m[i])
+        if i == 0 or i == len(raw) - 1 or uses[q] > 1:
+            u = nid_of(q)
+            if prev is not None and prev[0] != u:
+                r_edges.append((prev[0], u, r, prev[1] * k, along * k))
+            prev = (u, along)
+print('route nodes', len(r_nodes) // 2, 'edges', len(r_edges))
+
 # Ends of a raised or sunken way stay at its height when another way of the same kind continues there
 # (long bridges and tunnels are split into several OSM ways); otherwise they meet the ground.
 node_prof = {}
@@ -497,6 +530,8 @@ u32 = lambda rows: np.asarray(rows, np.uint32).reshape(-1) if rows else np.zeros
 f32 = lambda rows: np.asarray(rows, np.float32).reshape(-1) if rows else np.zeros(0, np.float32)
 write('riyadh-roads.bin', [('roads', u32(roads)), ('roadPts', f32(PTS['road'])), ('roadZ', f32(road_z)), ('land', u32(land)), ('landPts', f32(PTS['land'])),
                            ('rail', u32(rail)), ('railPts', f32(PTS['rail']))])
+# the routing graph is fetched only when the guide first plans a route
+write('riyadh-route.bin', [('rNodes', f32(r_nodes)), ('rEdges', u32([e[:3] for e in r_edges])), ('rAlong', f32([e[3:] for e in r_edges]))])
 write('riyadh-buildings.bin', [('buildings', u32(buildings)), ('bldPts', f32(PTS['bld'])), ('mosques', f32(mosques))])
 # infill packed to 12 bytes: f32 x, f32 z, u8 yaw/2pi*256, u8 width*4, u8 depth*4, u8 (height-2)*4 -> as 4 bytes
 fx = np.asarray([(f[0], f[1]) for f in fill], np.float32).reshape(-1)

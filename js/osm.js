@@ -12,12 +12,14 @@ function b64(text) {
   return out.buffer;
 }
 
+const LAZY = new Set(['riyadh-route.bin']);
 export class OSM {
   async load(base, onProgress) {
     const meta = await (await fetch(base + 'riyadh.json')).json();
     this.meta = meta;
     this.names = meta.names;
-    const files = Object.keys(meta.files);
+    this.base = base;
+    const files = Object.keys(meta.files).filter((f) => !LAZY.has(f));
     const bufs = {};
     let done = 0;
     await Promise.all(files.map(async (f) => {
@@ -32,6 +34,17 @@ export class OSM {
     for (const f of files) for (const [k, d] of Object.entries(meta.files[f])) this.s[k] = new T[d.type](bufs[f], d.offset, d.length);
     this.prepare();
     return this;
+  }
+  // sections fetched on first use (the routing graph)
+  async loadExtra(f) {
+    if (this.s[Object.keys(this.meta.files[f] || {})[0]]) return true;
+    const d = this.meta.files[f]; if (!d) return false;
+    const r = await fetch(this.base + f.replace(/\.bin$/, '.b64.txt'));
+    if (!r.ok) return false;
+    const buf = b64(await r.text());
+    const T = { uint32: Uint32Array, float32: Float32Array, uint16: Uint16Array, uint8: Uint8Array };
+    for (const [k, s] of Object.entries(d)) this.s[k] = new T[s.type](buf, s.offset, s.length);
+    return true;
   }
   prepare() {
     const s = this.s;

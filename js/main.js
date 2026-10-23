@@ -13,6 +13,7 @@ import { Player } from './player.js';
 import { OSM, RC, F, SEG } from './osm.js';
 import { World } from './world.js';
 import { Cars } from './cars.js';
+import { Guide } from './guide.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t, p) => { $('loading-status').textContent = t; if (p !== undefined) $('loading-progress').style.width = (p * 100).toFixed(0) + '%'; };
@@ -30,6 +31,12 @@ $('canvas-container').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.3, 50000);
+// upright phones: keep at least ~64 degrees across, or the road ahead is a narrow slot
+function fitFov() {
+  const a = camera.aspect, minH = 64 * Math.PI / 180;
+  camera.fov = a >= 1.2 ? 60 : Math.min(84, Math.max(60, 2 * Math.atan(Math.tan(minH / 2) / a) * 180 / Math.PI));
+}
+fitFov(); camera.updateProjectionMatrix();
 scene.fog = new THREE.Fog(0xd3cbb9, 600, 11000);
 
 const sky = makeSky();
@@ -298,6 +305,7 @@ function updateCamera(dt) {
   else {
     dist = (player.mode === 'person' ? 5.5 : player.mode === 'car' ? 11 : 30) * orbitCtl.zoom * (player.gy < -2 && player.mode !== 'heli' ? 0.75 : 1);
     up = 0; look = player.mode === 'person' ? 1.5 : player.mode === 'car' ? 1.6 : 2.5;
+    if (camera.aspect < 1 && player.mode === 'car') { dist *= 1.2; up = 1.2; }   // upright phone: a little higher and further back
   }
   // the camera heading trails the car's heading; position is then rigid to the car, so the car never shakes on screen
   const dy = Math.atan2(Math.sin(player.yaw - camYaw), Math.cos(player.yaw - camYaw));
@@ -306,7 +314,8 @@ function updateCamera(dt) {
   const pitch = id === 'top' ? 1.1 : orbitCtl.pitch + (player.mode === 'heli' ? 0.12 : 0);
   camGy += (player.gy - camGy) * Math.min(1, dt * 4);   // ramps and bridges ease the camera height
   const base = player.mode === 'heli' ? player.alt : camGy + (player.mode === 'person' ? player.alt : 0);
-  const target = new THREE.Vector3(p.x, base + look, p.z);
+  const ahead = id === 'top' || player.mode === 'heli' ? 0 : player.mode === 'car' ? (camera.aspect < 1 ? 9 : 5) : 2;
+  const target = new THREE.Vector3(p.x + Math.cos(camYaw) * ahead, base + look, p.z - Math.sin(camYaw) * ahead);
   const want = new THREE.Vector3(
     p.x + Math.cos(yaw) * Math.cos(pitch) * dist,
     base + look + Math.sin(pitch) * dist + up,
@@ -348,6 +357,7 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyC') setCamera(camId === 'pov' ? 'chase' : 'pov');
   if (k === 'KeyM') { e.preventDefault(); toggleMap(); }
   if (k === 'KeyH') toggleHud();
+  if (k === 'KeyG') guide?.openList();
   if (k === 'KeyT') { const ids = Object.keys(PRESETS); applyPreset(ids[(ids.indexOf(presetId) + 1) % ids.length]); }
   if (k === 'Escape' && !$('fullmap-modal').hidden) toggleMap(false);
   if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(k)) e.preventDefault();
@@ -355,7 +365,7 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function readKeys() {
-  input.up = keys.KeyW || keys.ArrowUp; input.down = keys.KeyS || keys.ArrowDown;
+  input.up = keys.KeyW || keys.ArrowUp || touchGas; input.down = keys.KeyS || keys.ArrowDown || touchBrake;
   input.left = keys.KeyA || keys.ArrowLeft; input.right = keys.KeyD || keys.ArrowRight;
   input.boost = keys.ShiftLeft || keys.ShiftRight || touchBoost;
   input.jump = keys.Space || keys.KeyE || keys.PageUp || touchUp;
@@ -376,7 +386,7 @@ function readKeys() {
   el.addEventListener('wheel', (e) => { orbitCtl.zoom = THREE.MathUtils.clamp(orbitCtl.zoom * Math.exp(e.deltaY * 0.001), 0.35, 6); e.preventDefault(); }, { passive: false });
 }
 // touch: joystick on the left, drag elsewhere to look
-let touchUp = false, touchDown = false, touchBoost = false;
+let touchUp = false, touchDown = false, touchBoost = false, touchGas = false, touchBrake = false;
 if (touch) {
   $('touch-controls').hidden = false;
   const stick = $('touch-stick'), knob = $('touch-stick-knob');
@@ -389,7 +399,9 @@ if (touch) {
     knob.style.transform = `translate(${dx * 38}px, ${dy * 38}px)`;
     // dead zone and a soft curve: small finger wobble must not steer
     const shape = (v, dz) => { const a = Math.max(0, (Math.abs(v) - dz) / (1 - dz)); return Math.sign(v) * a * (0.35 + 0.65 * a); };
-    input.ax = -shape(dx, 0.18); input.ay = -shape(dy, 0.12);
+    const steerOnly = player.mode === 'car';   // driving: the pedals do throttle and brake
+    if (steerOnly) knob.style.transform = `translate(${dx * 38}px, 0px)`;
+    input.ax = -shape(dx, steerOnly ? 0.1 : 0.18); input.ay = steerOnly ? 0 : -shape(dy, 0.12);
   };
   stick.addEventListener('pointermove', move);
   const end = (e) => { if (e.pointerId !== sid) return; sid = null; input.ax = input.ay = 0; knob.style.transform = ''; };
@@ -415,7 +427,7 @@ if (touch) {
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
 document.querySelectorAll('.touch-action').forEach((b) => {
-  const set = (v) => { const a = b.dataset.touchAction; if (a === 'up') touchUp = v; if (a === 'down') touchDown = v; if (a === 'boost') touchBoost = v; b.setAttribute('aria-pressed', v); };
+  const set = (v) => { const a = b.dataset.touchAction; if (a === 'up') touchUp = v; if (a === 'down') touchDown = v; if (a === 'boost') touchBoost = v; if (a === 'gas') touchGas = v; if (a === 'brake') touchBrake = v; b.setAttribute('aria-pressed', v); };
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true); });
   b.addEventListener('pointerup', () => set(false)); b.addEventListener('pointerleave', () => set(false)); b.addEventListener('pointercancel', () => set(false));
 });
@@ -436,6 +448,9 @@ function setMode(m) {
   document.querySelectorAll('.touch-action[data-touch-action="down"]').forEach((b) => (b.hidden = m !== 'heli'));
   if (!touch) $('touch-controls').hidden = m !== 'heli';
   document.querySelectorAll('.touch-action[data-touch-action="up"]').forEach((b) => (b.hidden = m === 'car'));
+  document.querySelectorAll('.pedals').forEach((p) => (p.hidden = !(touch && m === 'car')));
+  document.body.classList.toggle('driving-touch', touch && m === 'car');
+  input.ay = 0;
   const upLabel = document.querySelector('[data-touch-label="up"]'); if (upLabel) upLabel.textContent = m === 'heli' ? 'صعود' : 'قفز';
 }
 // each teleport lands on the nearest big road to a real spot, facing along the traffic
@@ -495,6 +510,7 @@ function buildMenus() {
   $('cam-prev').onclick = () => { const i = CAMS.findIndex((c) => c.id === camId); setCamera(CAMS[(i - 1 + CAMS.length) % CAMS.length].id); };
   $('cam-next').onclick = () => { const i = CAMS.findIndex((c) => c.id === camId); setCamera(CAMS[(i + 1) % CAMS.length].id); };
   $('btn-open-map').onclick = () => toggleMap(true);
+  $('btn-guide').onclick = () => guide?.openList();
   $('minimap-card').onclick = () => toggleMap(true);
   $('fullmap-close').onclick = () => toggleMap(false);
   $('btn-toggle-hud').onclick = toggleHud;
@@ -599,6 +615,7 @@ function drawMinimap() {
   drawLand(ctx, toScreen, p.x - R * 1.5, p.z - R * 1.5, p.x + R * 1.5, p.z + R * 1.5);
   if (R < 900) drawBlocks(ctx, toScreen, p.x - R * 1.5, p.z - R * 1.5, p.x + R * 1.5, p.z + R * 1.5);
   drawRoadsOn(ctx, toScreen, scale, p.x - R * 1.5, p.z - R * 1.5, p.x + R * 1.5, p.z + R * 1.5);
+  guide?.drawOn(ctx, toScreen, scale);
   for (const [k, pl] of Object.entries(P)) {
     const s = toScreen(pl.x, pl.z);
     if (s[0] < -10 || s[0] > size + 10 || s[1] < -10 || s[1] > size + 10) continue;
@@ -633,6 +650,7 @@ function drawAtlas() {
   drawLand(ctx, toScreen, vx0, vz0, vx1, vz1);
   if (view.s > 0.25) drawBlocks(ctx, toScreen, vx0, vz0, vx1, vz1);
   drawRoadsOn(ctx, toScreen, view.s, vx0, vz0, vx1, vz1);
+  guide?.drawOn(ctx, toScreen, view.s);
   ctx.textAlign = 'center';
   ctx.direction = 'rtl';
   if (view.s > 0.035) {
@@ -773,6 +791,7 @@ function updateHud(dt, fps) {
 }
 
 // ---------- main loop ----------
+let guide = null;
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
 let lastTs = null, dtSmooth = 1 / 60;
@@ -796,6 +815,7 @@ function frame(ts) {
   world.update({ x: focus.x, z: focus.z }, nearR, farR, 6);
   for (let k = 0; k < subN; k++) traffic.update(dt, focus, player.mode !== 'heli' && !scenic ? player.pos : null);
   peds.update(frameDt, focus.x, focus.z, !scenic || camPos.y < 60);
+  guide?.update(frameDt, scenic || document.body.classList.contains('hud-hidden') || !$('fullmap-modal').hidden);
   // shadow camera follows what we are looking at
   const sc = new THREE.Vector3(camLook.x, 0, camLook.z);
   sun.target.position.copy(sc);
@@ -820,7 +840,7 @@ function frame(ts) {
 }
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  camera.aspect = innerWidth / innerHeight; fitFov(); camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer?.setSize(innerWidth, innerHeight);
 });
@@ -837,6 +857,10 @@ async function boot() {
     await nextFrame();
     world = new World(scene, osm);
     traffic = new Cars(scene, osm, touch ? 110 : 170);
+    guide = new Guide({ scene, camera, osm, player, teleport: (key) => {
+      const t = TELEPORTS.find((q) => q.id === key) || (() => { const g = G.PLACES[key]; return { id: key, at: [g.lat, g.lon], small: true }; })();
+      teleport(t);
+    } });
     player.osm = osm;
     status('بناء المعالم: برج المملكة، الفيصلية، المصمك…', 0.45);
     buildLandmarks(scene);
@@ -867,4 +891,4 @@ async function boot() {
   }
 }
 boot();
-window.__riyadh = { scene, camera, player, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
+window.__riyadh = { scene, camera, player, orbitCtl, get guide() { return guide; }, orbitCtl, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
