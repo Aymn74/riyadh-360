@@ -26,6 +26,7 @@ let failed = 0;
 const results = [];
 const open_ = [];
 async function test(name, fn) {
+  if (process.env.ONLY && !name.includes(process.env.ONLY)) return;
   const t0 = Date.now();
   try { await fn(); results.push(`ok   ${name} (${((Date.now() - t0) / 1000).toFixed(1)} s)`); }
   catch (e) { failed++; results.push(`FAIL ${name}: ${e.message.split('\n')[0]}`); }
@@ -92,7 +93,7 @@ await test('the road network recovers after a failed first load', async () => {
   let n = 0;
   const { page, close } = await open({ routes: { 'riyadh-route.b64.txt': (r) => (++n === 1 ? r.abort() : r.continue()) } });
   await ready(page);
-  await page.evaluate(() => { const g = __riyadh.guide; return g.go(g.pins.find((p) => p.g.key === 'faisaliah').g); });
+  await page.evaluate(() => { const g = __riyadh.guide; return g.go(g.pins.find((p) => p.g.key === 'museum').g); });
   const msg = await page.textContent('#guide-nav span');
   assert(/إعادة المحاولة/.test(msg), 'no retry offered: ' + msg);
   await page.click('#guide-nav span');
