@@ -139,11 +139,37 @@ const STOPS = [
   }]
 ];
 
+// themed tours: which stops each theme visits, and which stops matter most when time is short
+const THEMES = {
+  all: ['masmak', 'museum', 'water', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'kafd', 'rafal', 'turaif'],
+  history: ['masmak', 'museum', 'water', 'tv', 'turaif'],
+  towers: ['tv', 'faisaliah', 'kingdom', 'kafd', 'rafal'],
+  culture: ['museum', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom']
+};
+const RANK = ['kingdom', 'masmak', 'faisaliah', 'turaif', 'kafd', 'museum', 'library', 'tahlia', 'rafal', 'tv', 'moi', 'water'];
+const DURS = { short: { max: 4, brief: true }, medium: { max: 7, brief: false }, full: { max: 99, brief: false } };
+const B = {
+  ar: { design: 'صمّم جولتك', theme: 'الموضوع', length: 'المدة', themes: { all: 'شاملة', history: 'تاريخية', towers: 'الأبراج', culture: 'عمارة وثقافة' }, durs: { short: 'قصيرة', medium: 'متوسطة', full: 'كاملة' }, about: 'نحو', min: 'دقيقة', stops: 'محطات', go: 'ابدأ الجولة', cancel: 'إلغاء' },
+  en: { design: 'Plan your tour', theme: 'Theme', length: 'Length', themes: { all: 'Everything', history: 'History', towers: 'Skyline', culture: 'Architecture & culture' }, durs: { short: 'Short', medium: 'Medium', full: 'Full' }, about: 'about', min: 'min', stops: 'stops', go: 'Start the tour', cancel: 'Cancel' },
+  fr: { design: 'Composez votre visite', theme: 'Thème', length: 'Durée', themes: { all: 'Tout', history: 'Histoire', towers: 'Gratte-ciel', culture: 'Architecture et culture' }, durs: { short: 'Courte', medium: 'Moyenne', full: 'Complète' }, about: 'environ', min: 'min', stops: 'étapes', go: 'Commencer la visite', cancel: 'Annuler' },
+  es: { design: 'Diseñe su recorrido', theme: 'Tema', length: 'Duración', themes: { all: 'Todo', history: 'Historia', towers: 'Rascacielos', culture: 'Arquitectura y cultura' }, durs: { short: 'Corta', medium: 'Media', full: 'Completa' }, about: 'unos', min: 'min', stops: 'paradas', go: 'Empezar el recorrido', cancel: 'Cancelar' },
+  de: { design: 'Rundgang planen', theme: 'Thema', length: 'Dauer', themes: { all: 'Alles', history: 'Geschichte', towers: 'Skyline', culture: 'Architektur und Kultur' }, durs: { short: 'Kurz', medium: 'Mittel', full: 'Ganz' }, about: 'ca.', min: 'Min.', stops: 'Stationen', go: 'Rundgang starten', cancel: 'Abbrechen' },
+  zh: { design: '定制您的游览', theme: '主题', length: '时长', themes: { all: '全部', history: '历史', towers: '摩天楼', culture: '建筑与文化' }, durs: { short: '短', medium: '中', full: '完整' }, about: '约', min: '分钟', stops: '站', go: '开始游览', cancel: '取消' }
+};
+const WELCOME = { ar: 'أهلاً بكم في الرياض، عاصمة المملكة العربية السعودية.', en: 'Welcome to Riyadh, the capital of Saudi Arabia.', fr: 'Bienvenue à Riyad, capitale de l\'Arabie saoudite.', es: 'Bienvenidos a Riad, la capital de Arabia Saudí.', de: 'Willkommen in Riad, der Hauptstadt Saudi-Arabiens.', zh: '欢迎来到沙特阿拉伯首都利雅得。' };
+const THEME_INTRO = {
+  history: { ar: 'في هذه الجولة نتتبع تاريخ المدينة، من قلعة الطين التي انطلق منها توحيد المملكة إلى عاصمة الدولة السعودية الأولى في الدرعية.', en: 'This tour follows the city\'s history, from the mud fort where the unification began to Diriyah, capital of the first Saudi state.', fr: 'Cette visite suit l\'histoire de la ville, du fort de terre où commença l\'unification jusqu\'à Diriyah, capitale du premier État saoudien.', es: 'Este recorrido sigue la historia de la ciudad, desde el fuerte de adobe donde empezó la unificación hasta Diriyah, capital del primer Estado saudí.', de: 'Dieser Rundgang folgt der Geschichte der Stadt, von der Lehmfestung, mit der die Einigung begann, bis nach Diriyah, der Hauptstadt des ersten saudischen Staates.', zh: '这条路线追溯城市的历史，从开启统一大业的泥砖城堡，到第一沙特国的首都德拉伊耶。' },
+  towers: { ar: 'في هذه الجولة نحلّق فوق أبراج الرياض، من برج التلفزيون إلى أعلى مباني المدينة في المركز المالي.', en: 'This tour flies over Riyadh\'s towers, from the TV tower to the tallest building in the city, in the financial district.', fr: 'Cette visite survole les tours de Riyad, de la tour de télévision au plus haut bâtiment de la ville, dans le quartier financier.', es: 'Este recorrido sobrevuela las torres de Riad, desde la torre de televisión hasta el edificio más alto de la ciudad, en el distrito financiero.', de: 'Dieser Rundgang führt über die Türme Riads, vom Fernsehturm bis zum höchsten Gebäude der Stadt im Finanzdistrikt.', zh: '这条路线飞越利雅得的高楼，从电视塔一直到金融区的全城最高建筑。' },
+  culture: { ar: 'في هذه الجولة نزور أشهر مباني الرياض تصميماً، وأماكن ثقافتها وحياتها اليومية.', en: 'This tour visits Riyadh\'s most striking buildings and the places where its culture and daily life happen.', fr: 'Cette visite parcourt les bâtiments les plus marquants de Riyad et les lieux de sa culture et de sa vie quotidienne.', es: 'Este recorrido visita los edificios más llamativos de Riad y los lugares de su cultura y su vida diaria.', de: 'Dieser Rundgang besucht die markantesten Gebäude Riads und die Orte seiner Kultur und seines Alltags.', zh: '这条路线走访利雅得最具特色的建筑，以及城市文化与日常生活的场所。' }
+};
+// the short tour keeps the first two sentences of each story
+const firstSentence = (t) => (t.match(/^(?:.*?(?:[。؟]|[.!?](?=\s|$))){1,2}/) || [t])[0].trim();
+
 const CSS = `
 #tour-panel { position: fixed; z-index: 25; left: 0; right: 0; margin: 0 auto; width: min(560px, calc(100vw - 24px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); background: rgba(20,16,12,0.9); color: #fbf6ec; border: 1px solid rgba(243,215,154,0.35); border-radius: 14px; padding: 12px 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.45); backdrop-filter: blur(10px); }
 #tour-panel .top { display: flex; align-items: center; gap: 8px; }
 #tour-panel .top b { font-size: 16px; white-space: nowrap; } #tour-panel .top small { white-space: nowrap; }
-@media (max-width: 440px) { #tour-panel .top b { display: none; } #tour-panel .tb { min-width: 38px; padding: 0 8px; } } #tour-panel .top small { opacity: .7; font-size: 12px; }
+@media (max-width: 440px) { #tour-panel .top b:not(.keep) { display: none; } #tour-panel .tb { min-width: 38px; padding: 0 8px; } } #tour-panel .top small { opacity: .7; font-size: 12px; }
 #tour-panel .top .sp { flex: 1; }
 #tour-panel select { height: 34px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: #2a231b; color: #fbf6ec; font: inherit; font-size: 13px; padding: 0 6px; }
 #tour-panel .tb { height: 34px; min-width: 34px; padding: 0 10px; border-radius: 8px; border: 0; background: rgba(255,255,255,0.1); color: #fbf6ec; font: inherit; font-size: 13px; cursor: pointer; }
@@ -152,6 +178,16 @@ const CSS = `
 #tour-panel .cap h4 { margin: 0 0 2px; color: #f3d79a; font-size: 17px; }
 #tour-panel .bar { height: 3px; border-radius: 3px; background: rgba(255,255,255,0.12); margin-top: 8px; overflow: hidden; } #tour-panel .bar i { display: block; height: 100%; width: 0; background: #f3d79a; }
 #tour-panel .note { font-size: 11.5px; opacity: .7; margin-top: 4px; }
+#tour-panel .setup { display: grid; gap: 10px; margin-top: 10px; }
+#tour-panel .lbl { font-size: 12px; opacity: .7; }
+#tour-panel .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+#tour-panel .opt { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: transparent; color: #fbf6ec; font: inherit; font-size: 13.5px; cursor: pointer; }
+#tour-panel .opt[aria-pressed="true"] { background: #f3d79a; color: #2a1d10; border-color: #f3d79a; }
+#tour-panel .plan { font-size: 13px; line-height: 1.8; opacity: .9; }
+#tour-panel .plan b { color: #f3d79a; }
+#tour-panel .go-row { display: flex; gap: 8px; }
+#tour-panel .go-row .tb { height: 40px; font-size: 14px; }
+#tour-panel .go-row .go { flex: 1; }
 body.touring #touch-controls, body.touring .hud-bottom, body.touring #guide-nav { display: none !important; }
 @media (pointer: coarse) and (orientation: portrait) { #tour-panel .cap { font-size: 14px; } }
 `;
@@ -164,7 +200,10 @@ export class Tour {
     try { this.lang = localStorage.getItem('riyadh-tour-lang') || ''; } catch (e) { this.lang = ''; }
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = (navigator.language || 'ar').slice(0, 2);
     if (!LANGS.find((l) => l.id === this.lang)) this.lang = 'en';
-    this.stops = STOPS.map(([key, h, text]) => ({ key, h, text, ...PLACES[key] }));
+    this.all = STOPS.map(([key, h, text]) => ({ key, h, text, ...PLACES[key] }));
+    this.stops = this.all;
+    this.theme = 'all'; this.dur = 'medium';
+    try { this.theme = THEMES[localStorage.getItem('riyadh-tour-theme')] ? localStorage.getItem('riyadh-tour-theme') : 'all'; this.dur = DURS[localStorage.getItem('riyadh-tour-dur')] ? localStorage.getItem('riyadh-tour-dur') : 'medium'; } catch (e) { /* private mode */ }
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     this.el = document.createElement('div'); this.el.id = 'tour-panel'; this.el.hidden = true; document.body.appendChild(this.el);
     this.synth = window.speechSynthesis || null;
@@ -177,6 +216,56 @@ export class Tour {
     if (!this.synth) return null;
     const L = LANGS.find((l) => l.id === lang), vs = this.synth.getVoices();
     return vs.find((v) => v.lang === L.bcp) || vs.find((v) => v.lang.replace('_', '-').toLowerCase().startsWith(lang)) || null;
+  }
+  // ---- planning: the theme's stops, trimmed to the most important ones for the length, kept in travelling order
+  plan(theme = this.theme, dur = this.dur) {
+    const keys = THEMES[theme], max = DURS[dur].max;
+    const keep = new Set(keys.slice().sort((a, b) => RANK.indexOf(a) - RANK.indexOf(b)).slice(0, max));
+    return this.all.filter((s) => keep.has(s.key)).map((s) => ({ ...s, text: DURS[dur].brief ? Object.fromEntries(Object.entries(s.text).map(([l, t]) => [l, firstSentence(t)])) : s.text }));
+  }
+  intro() {
+    if (this.theme === 'all') return INTRO;
+    return Object.fromEntries(LANGS.map((l) => [l.id, WELCOME[l.id] + ' ' + THEME_INTRO[this.theme][l.id]]));
+  }
+  // minutes, from the same flight times and a speaking pace of about 11 characters a second
+  estimate(stops) {
+    const cps = this.lang === 'zh' ? 4.5 : 11, said = (t) => t[this.lang].length / cps;
+    let x = this.from ? this.from.x : 0, z = this.from ? this.from.z : 0, sec = 0;
+    stops.forEach((s, k) => {
+      const fly = Math.min(16, Math.max(5, 3 + Math.hypot(s.x - x, s.z - z) / 900));
+      sec += k === 0 ? Math.max(fly, said(this.intro())) : fly;
+      sec += Math.max(4, said(s.text)) + 2;
+      x = s.x; z = s.z;
+    });
+    return Math.max(1, Math.round((sec + said(OUTRO)) / 60));
+  }
+  open(fromPos, fromLook) {
+    this.from = fromPos.clone(); this.fromLook = fromLook.clone();
+    this.phase = 'setup'; this.el.hidden = false;
+    this.renderSetup();
+  }
+  renderSetup() {
+    const u = this.ui, b = B[this.lang], L = LANGS.find((l) => l.id === this.lang);
+    this.el.dir = L.dir;
+    const stops = this.plan(), name = (s) => (this.lang === 'ar' ? s.ar : s.en);
+    const sep = this.lang === 'ar' ? '، ' : this.lang === 'zh' ? '、' : ', ';
+    this.el.innerHTML = `<div class="top"><b class="keep">${b.design}</b><span class="sp"></span>
+      <select aria-label="${u.lang}">${LANGS.map((l) => `<option value="${l.id}"${l.id === this.lang ? ' selected' : ''}>${l.name}</option>`).join('')}</select>
+      <button class="tb" data-a="cancel" type="button" title="${b.cancel}">✕</button></div>
+      <div class="setup">
+        <div class="lbl">${b.theme}</div>
+        <div class="opts" role="group" aria-label="${b.theme}">${Object.keys(THEMES).map((k) => `<button class="opt" type="button" data-theme-id="${k}" aria-pressed="${k === this.theme}">${b.themes[k]}</button>`).join('')}</div>
+        <div class="lbl">${b.length}</div>
+        <div class="opts" role="group" aria-label="${b.length}">${Object.keys(DURS).map((k) => `<button class="opt" type="button" data-dur="${k}" aria-pressed="${k === this.dur}">${b.durs[k]}</button>`).join('')}</div>
+        <div class="plan"><b>${stops.length} ${b.stops} · ${b.about} ${this.estimate(stops)} ${b.min}</b><br>${stops.map(name).join(sep)}</div>
+        <div class="go-row"><button class="tb go" type="button" data-a="go">▶ ${b.go}</button></div>
+      </div>`;
+    const keep = () => { try { localStorage.setItem('riyadh-tour-theme', this.theme); localStorage.setItem('riyadh-tour-dur', this.dur); localStorage.setItem('riyadh-tour-lang', this.lang); } catch (e) { /* private mode */ } };
+    this.el.querySelector('select').onchange = (e) => { this.lang = e.target.value; keep(); this.renderSetup(); };
+    this.el.querySelectorAll('[data-theme-id]').forEach((x) => (x.onclick = () => { this.theme = x.dataset.themeId; keep(); this.renderSetup(); }));
+    this.el.querySelectorAll('[data-dur]').forEach((x) => (x.onclick = () => { this.dur = x.dataset.dur; keep(); this.renderSetup(); }));
+    this.el.querySelector('[data-a="cancel"]').onclick = () => { this.el.hidden = true; this.phase = null; };
+    this.el.querySelector('[data-a="go"]').onclick = () => { this.stops = this.plan(); this.start(this.from, this.fromLook); };
   }
   // ---- panel
   render() {
@@ -232,7 +321,7 @@ export class Tour {
     this.el.hidden = false;
     this.pos.copy(fromPos); this.look.copy(fromLook);
     this.beginFlight(this.stops[0]);
-    this.say(INTRO);
+    this.say(this.intro());
   }
   stop(finished) {
     if (!this.active) return;

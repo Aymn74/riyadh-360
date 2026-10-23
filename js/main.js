@@ -446,7 +446,7 @@ document.addEventListener('click', (e) => { const b = e.target.closest('button')
 function startTour() {
   if (!tour) return;
   if (player.mode !== 'car') setMode('car');
-  tour.start(camera.position.clone(), camLook.clone());
+  tour.open(camera.position.clone(), camLook.clone());
 }
 // ---------- modes, teleports ----------
 const HINTS = {
