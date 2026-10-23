@@ -856,8 +856,8 @@ function frame(ts) {
   // headlights in the dark
   player.models.car.userData.spot.intensity = player.mode === 'car' ? Math.max(0, U.uNight.value - 0.4) * 900 : 0;
   {
-    const n = Math.max(0, U.uNight.value - 0.3) / 0.7, h = player.mode === 'heli' ? 0 : player.mode === 'car' ? 7 : 5;
-    nearGlow.intensity = player.mode === 'heli' ? 0 : n * (player.mode === 'car' ? 65 : 42);
+    const n = Math.max(0, U.uNight.value - 0.3) / 0.7, h = player.mode === 'heli' ? 0 : player.mode === 'car' ? 11 : 6;
+    nearGlow.intensity = player.mode === 'heli' ? 0 : n * (player.mode === 'car' ? 85 : 46);   // high above, so the car roof is not blown out
     nearGlow.position.set(player.pos.x - Math.cos(player.yaw) * 3, player.height - (player.mode === 'car' ? 1.3 : 1.6) + h, player.pos.z + Math.sin(player.yaw) * 3);
   }
   if (composer) composer.render(); else renderer.render(scene, camera);

@@ -1,8 +1,22 @@
+<div align="center">
+
 # Slop Riyadh · سلوب الرياض
 
-A 3D Riyadh in the browser, built from OpenStreetMap with three.js (WebGL). Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork).
+**A 3D Riyadh in the browser, built from real OpenStreetMap data · الرياض ثلاثية الأبعاد في المتصفح من بيانات الخريطة المفتوحة**
 
-**[▶ افتح الموقع · Open it live](https://aymn74.github.io/slop-riyadh/)**. It works on phones and computers, with no install.
+[![Open it live](https://img.shields.io/badge/%E2%96%B6%20Open%20it%20live-%D8%A7%D9%81%D8%AA%D8%AD%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9-1f9d63?style=for-the-badge)](https://aymn74.github.io/slop-riyadh/)
+
+![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555)
+
+<a href="https://aymn74.github.io/slop-riyadh/"><img src="docs/hero.jpg" alt="Kingdom Centre and the Olaya towers at maghrib" width="100%"></a>
+
+<sub>Kingdom Centre and the towers of Olaya at maghrib · برج المملكة وأبراج العليا وقت المغرب</sub>
+
+[العربية](#بالعربية) · [English](#in-english) · [Screenshots](#screenshots) · [Controls](#controls) · [Data](#data) · [Files](#files)
+
+</div>
+
+Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It works on phones and computers.
 
 <div dir="rtl">
 
@@ -69,6 +83,19 @@ A 3D Riyadh in the browser, built from OpenStreetMap with three.js (WebGL). Insp
 
 Narration uses the browser's own speech voices, so the voices available depend on the device. Prayer times can differ by a minute or two from the official calendar.
 
+## Screenshots
+
+| | |
+|---|---|
+| <img src="docs/masmak.jpg" alt="Masmak Fortress in the old town"> | <img src="docs/diriyah.jpg" alt="The mud-brick palaces of At-Turaif in Diriyah at sunset"> |
+| **Masmak Fortress**, where the story of modern Riyadh began · قصر المصمك | **At-Turaif, Diriyah** at sunset · حي الطريف في الدرعية |
+| <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> | <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower with Kingdom Centre behind it at noon"> |
+| **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً | **Al Faisaliah** and Kingdom Centre at noon · برج الفيصلية وبرج المملكة ظهراً |
+
+**On a phone · على الجوال:** the guided tour with narration, the guide with shopping and food, the tourist panel with prayer times, and road guidance with the driving pedals.
+
+<img src="docs/phone.jpg" alt="Four phone screens: the guided tour, the guide's food list, the tourist panel and road guidance" width="100%">
+
 ## Controls
 
 | | Keyboard | Phone |
@@ -115,3 +142,9 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
 - `tools/`: the Python scripts that turn the GeoPackage into the files in `data/`
 
 To run it locally, serve the folder with any static server (for example `npx serve .`) and open `index.html`.
+
+## Credits
+
+- Map data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright), ODbL, extract by [BBBike](https://extract.bbbike.org/).
+- Built with [three.js](https://threejs.org/). The idea comes from [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork).
+- Prayer times use the Umm al-Qura parameters, computed in the browser.
