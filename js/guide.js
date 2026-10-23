@@ -143,7 +143,7 @@ const CSS = `
 #guide-card .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #guide-card .dist { margin-inline-start: auto; font-size: 12.5px; opacity: .8; }
 .g-btn { height: 38px; padding: 0 14px; border-radius: 9px; border: 0; cursor: pointer; font: 600 14px inherit; font-family: inherit; }
-.g-go { background: #1f9d63; color: #fff; } .g-alt { background: rgba(255,255,255,0.1); color: #fbf6ec; }
+.g-go { background: #1f9d63; color: #fff; } .g-tour { width: 100%; margin-top: 10px; height: 44px; font-size: 15px; } .g-alt { background: rgba(255,255,255,0.1); color: #fbf6ec; }
 .g-x { position: absolute; top: 8px; left: 8px; width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: #fbf6ec; font-size: 20px; cursor: pointer; }
 #guide-list { max-height: 50vh; overflow: auto; display: grid; gap: 4px; margin-top: 8px; }
 #guide-list button { display: flex; justify-content: space-between; gap: 10px; text-align: right; background: rgba(255,255,255,0.05); color: #fbf6ec; border: 0; border-radius: 8px; padding: 9px 10px; cursor: pointer; font: inherit; font-size: 14px; }
@@ -159,8 +159,8 @@ const CSS = `
 const fmtDist = (m) => (m < 1000 ? Math.round(m / 10) * 10 + ' م' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' كم');
 
 export class Guide {
-  constructor({ scene, camera, osm, player, teleport }) {
-    Object.assign(this, { scene, camera, osm, player, teleport });
+  constructor({ scene, camera, osm, player, teleport, startTour }) {
+    Object.assign(this, { scene, camera, osm, player, teleport, startTour });
     this.router = null;   // built when the routing graph first arrives
     this.route = null; this.dest = null; this.seen = new Map(); this.t = 0;
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
@@ -186,7 +186,9 @@ export class Guide {
   openList() {
     const p = this.player.pos;
     const items = GUIDE.map((g) => ({ g, d: Math.hypot(g.x - p.x, g.z - p.z) })).sort((a, b) => a.d - b.d);
-    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>دليل الرياض</h3><div class="en">Riyadh guide · ${GUIDE.length} places</div><div id="guide-list"></div>`;
+    this.card.innerHTML = `<button class="g-x" type="button" aria-label="إغلاق">✕</button><h3>دليل الرياض</h3><div class="en">Riyadh guide · ${GUIDE.length} places</div>
+      <button class="g-btn g-go g-tour" type="button">▶ جولة سياحية تلقائية · Guided tour</button><div id="guide-list"></div>`;
+    this.card.querySelector('.g-tour').addEventListener('click', () => { this.card.hidden = true; this.clear(); this.startTour?.(); });
     const list = this.card.querySelector('#guide-list');
     for (const { g, d } of items) {
       const b = document.createElement('button'); b.type = 'button';

@@ -14,6 +14,7 @@ import { OSM, RC, F, SEG } from './osm.js';
 import { World } from './world.js';
 import { Cars } from './cars.js';
 import { Guide } from './guide.js';
+import { Tour } from './tour.js';
 
 const $ = (id) => document.getElementById(id);
 const status = (t, p) => { $('loading-status').textContent = t; if (p !== undefined) $('loading-progress').style.width = (p * 100).toFixed(0) + '%'; };
@@ -272,6 +273,13 @@ function scenicPose(s, t, out, look) {
 }
 function updateCamera(dt) {
   camT += dt;
+  if (tour?.active) {
+    // the guided tour flies the camera itself
+    tour.update(dt);
+    camPos.copy(tour.pos); camLook.copy(tour.look);
+    camera.position.copy(camPos); camera.lookAt(camLook);
+    return;
+  }
   lookIdle += dt;
   if (lookIdle > 1.5 && Math.abs(player.speed) > 2 && camId !== 'top') {
     orbitCtl.yaw *= 1 - Math.min(1, dt * 1.2);
@@ -358,6 +366,7 @@ addEventListener('keydown', (e) => {
   if (k === 'KeyM') { e.preventDefault(); toggleMap(); }
   if (k === 'KeyH') toggleHud();
   if (k === 'KeyG') guide?.openList();
+  if (k === 'Escape' && tour?.active) tour.stop();
   if (k === 'KeyT') { const ids = Object.keys(PRESETS); applyPreset(ids[(ids.indexOf(presetId) + 1) % ids.length]); }
   if (k === 'Escape' && !$('fullmap-modal').hidden) toggleMap(false);
   if (['Space', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown'].includes(k)) e.preventDefault();
@@ -434,6 +443,11 @@ document.querySelectorAll('.touch-action').forEach((b) => {
 // a clicked HUD button must not keep keyboard focus, or Space would press it again instead of flying
 document.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && !b.closest('#fullmap-modal')) b.blur(); });
 
+function startTour() {
+  if (!tour) return;
+  if (player.mode !== 'car') setMode('car');
+  tour.start(camera.position.clone(), camLook.clone());
+}
 // ---------- modes, teleports ----------
 const HINTS = {
   person: 'W A S D للمشي · Shift للركض · Space للقفز · اسحب للتدوير',
@@ -791,7 +805,8 @@ function updateHud(dt, fps) {
 }
 
 // ---------- main loop ----------
-let guide = null;
+let guide = null, tour = null;
+const IDLE = { ax: 0, ay: 0, az: 0 };
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
 let lastTs = null, dtSmooth = 1 / 60;
@@ -807,9 +822,9 @@ function frame(ts) {
   fpsAvg += (1 / Math.max(frameDt, 1e-3) - fpsAvg) * 0.05;
   U.uTime.value += frameDt;
   readKeys();
-  for (let k = 0; k < subN; k++) player.update(dt, input, traffic);
+  for (let k = 0; k < subN; k++) player.update(dt, tour?.active ? IDLE : input, traffic);
   updateCamera(frameDt);
-  const scenic = !!SCENIC.find((s) => s.id === camId || (camId === 'drone' && SCENIC[directorIdx].id === s.id));
+  const scenic = !!tour?.active || !!SCENIC.find((s) => s.id === camId || (camId === 'drone' && SCENIC[directorIdx].id === s.id));
   const focus = scenic ? camera.position : player.pos;
   const nearR = scenic ? detailR * 0.8 : player.mode === 'heli' ? Math.min(2600, detailR + player.alt * 0.5) : detailR;
   world.update({ x: focus.x, z: focus.z }, nearR, farR, 6);
@@ -857,7 +872,12 @@ async function boot() {
     await nextFrame();
     world = new World(scene, osm);
     traffic = new Cars(scene, osm, touch ? 110 : 170);
-    guide = new Guide({ scene, camera, osm, player, teleport: (key) => {
+    tour = new Tour({ camera, onEnd: (stop) => {
+      // land on a street near where the tour ended
+      const t = TELEPORTS.find((q) => q.id === stop.key) || { id: stop.key, at: [stop.lat, stop.lon], small: true };
+      teleport(t); setCamera('chase');
+    } });
+    guide = new Guide({ scene, camera, osm, player, startTour, teleport: (key) => {
       const t = TELEPORTS.find((q) => q.id === key) || (() => { const g = G.PLACES[key]; return { id: key, at: [g.lat, g.lon], small: true }; })();
       teleport(t);
     } });
@@ -891,4 +911,4 @@ async function boot() {
   }
 }
 boot();
-window.__riyadh = { scene, camera, player, orbitCtl, get guide() { return guide; }, orbitCtl, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
+window.__riyadh = { scene, camera, player, orbitCtl, get guide() { return guide; }, get tour() { return tour; }, startTour, orbitCtl, get world() { return world; }, get osm() { return osm; }, get traffic() { return traffic; }, applyPreset, setCamera, setMode, teleport: (i) => teleport(TELEPORTS[i]), renderer };
