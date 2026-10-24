@@ -4,11 +4,11 @@
 
 **A 3D Riyadh in the browser, built from real OpenStreetMap data · الرياض ثلاثية الأبعاد في المتصفح من بيانات الخريطة المفتوحة**
 
-[![Open it live](https://img.shields.io/badge/%E2%96%B6%20Open%20it%20live-%D8%A7%D9%81%D8%AA%D8%AD%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9-1f9d63?style=for-the-badge)](https://aymn74.github.io/slop-riyadh/)
+[![Open it live](https://img.shields.io/badge/%E2%96%B6%20Open%20it%20live-%D8%A7%D9%81%D8%AA%D8%AD%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9-1f9d63?style=for-the-badge)](https://aymn74.github.io/riyadh-360/)
 
-![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555) [![tests](https://github.com/Aymn74/slop-riyadh/actions/workflows/test.yml/badge.svg)](https://github.com/Aymn74/slop-riyadh/actions/workflows/test.yml) ![License](https://img.shields.io/badge/license-MIT-blue)
+![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555) [![tests](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml/badge.svg)](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml) ![License](https://img.shields.io/badge/license-MIT-blue)
 
-<a href="https://aymn74.github.io/slop-riyadh/"><img src="docs/hero.jpg" alt="Kingdom Centre and the Olaya towers at maghrib" width="100%"></a>
+<a href="https://aymn74.github.io/riyadh-360/"><img src="docs/hero.jpg" alt="Kingdom Centre and the Olaya towers at maghrib" width="100%"></a>
 
 <sub>Kingdom Centre and the towers of Olaya at maghrib · برج المملكة وأبراج العليا وقت المغرب</sub>
 
