@@ -4,14 +4,16 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 const { chromium } = await import('playwright').catch(() => import('playwright-core'));
 
-const ROOT = process.env.ROOT || path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath, not URL.pathname: on Windows the pathname is /C:/..., which is not a path
+const ROOT = path.resolve(process.env.ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), '..'));
 const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.json': 'application/json', '.txt': 'text/plain', '.jpg': 'image/jpeg' };
 const server = http.createServer((req, res) => {
-  const p = path.join(ROOT, decodeURIComponent(new URL(req.url, 'http://x').pathname));
-  const f = p.endsWith('/') ? path.join(p, 'index.html') : p;
-  if (!f.startsWith(ROOT) || !fs.existsSync(f)) { res.writeHead(404); res.end('not found'); return; }
+  const u = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  const f = path.join(ROOT, u.endsWith('/') ? u + 'index.html' : u);
+  if (!f.startsWith(ROOT) || !fs.existsSync(f) || !fs.statSync(f).isFile()) { res.writeHead(404); res.end('not found'); return; }
   res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
   fs.createReadStream(f).pipe(res);
 });
@@ -96,7 +98,7 @@ await test('the road network recovers after a failed first load', async () => {
   await page.evaluate(() => { const g = __riyadh.guide; return g.go(g.pins.find((p) => p.g.key === 'museum').g); });
   const msg = await page.textContent('#guide-nav span');
   assert(/إعادة المحاولة/.test(msg), 'no retry offered: ' + msg);
-  await page.click('#guide-nav span');
+  await page.click('#guide-nav .nav-retry');
   await page.waitForFunction(() => __riyadh.guide.router && __riyadh.guide.route, null, { timeout: 60000 });
   assert(n === 2, `expected two requests, got ${n}`);
   await close();
@@ -189,7 +191,7 @@ await test('food and shopping sort into traditional, fast food, Asian, souqs and
   await close();
 });
 
-await test('a custom tour orders its stops for the shortest trip and can be driven stop by stop', async () => {
+await test('a custom tour orders its stops into a shorter trip and can be driven stop by stop', async () => {
   const { page, close } = await open();
   await ready(page);
   const r = await page.evaluate(async () => {
@@ -324,6 +326,43 @@ await test('the narrator\'s language can be changed from the toolbar or under a 
     return { before, en, fr: { lang: R.tour.lang, title: toast.querySelector('b').textContent, menu: !!document.getElementById('lang-menu') } };
   });
   assert(r.before === 'قصر المصمك' && r.en.title === 'Masmak Fortress' && r.en.lang === 'en' && r.en.code === 'EN' && r.fr.lang === 'fr' && !r.fr.menu && /Masmak/.test(r.fr.title), JSON.stringify(r));
+  await close();
+});
+
+await test('a route that ends short of its landmark (At-Turaif) still completes, and says how far is left on foot', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const R = __riyadh, g = R.guide, p = R.player, { GUIDE } = await import('./js/guide.js');
+    const frames = (n) => new Promise((res) => { const f0 = R.renderer.info.render.frame; const t = () => (R.renderer.info.render.frame - f0 >= n ? res() : setTimeout(t, 50)); t(); });
+    const turaif = GUIDE.find((x) => x.key === 'turaif');
+    R.teleport(5); R.setMode('car');
+    await g.ensureRouter(); await g.go(turaif);
+    const pts = g.route.pts, end = pts[pts.length - 1], gap = Math.hypot(turaif.x - end[0], turaif.z - end[1]);
+    // drive to the last few metres of the route
+    p.pos.x = end[0]; p.pos.z = end[1]; p.speed = 0;
+    await frames(6);
+    const toast = document.getElementById('guide-toast');
+    return { gap: Math.round(gap), dest: g.dest && g.dest.key, navHidden: g.nav.hidden, note: toast.textContent };
+  });
+  assert(r.gap > 150 && r.dest === null && r.navHidden && /أقرب نقطة/.test(r.note), JSON.stringify(r));
+  await close();
+});
+
+await test('keyboard: Escape leaves the guide from its search box, Space presses a focused button', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  await page.evaluate(() => __riyadh.guide.openList('all'));
+  await page.focus('#guide-q');
+  await page.keyboard.type('مص');
+  await page.keyboard.press('Escape');
+  const closed = await page.evaluate(() => document.getElementById('guide-card').hidden);
+  // Space on the focused narrator button toggles it, and does not make the player jump
+  await page.focus('#btn-narrator');
+  const before = await page.evaluate(() => __riyadh.tour.narrator);
+  await page.keyboard.press('Space');
+  const after = await page.evaluate(() => __riyadh.tour.narrator);
+  assert(closed && before !== after, JSON.stringify({ closed, before, after }));
   await close();
 });
 

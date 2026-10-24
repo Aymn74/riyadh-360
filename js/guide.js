@@ -267,6 +267,8 @@ const CSS = `
 #guide-nav button { width: 30px; height: 30px; border-radius: 8px; border: 0; background: rgba(255,255,255,0.15); color: #fff; font-size: 16px; cursor: pointer; }
 #guide-toast { position: fixed; z-index: 13; left: 0; right: 0; margin: 0 auto; box-sizing: border-box; top: calc(env(safe-area-inset-top, 0px) + 150px); width: min(380px, calc(100vw - 32px)); background: rgba(26,21,16,0.92); color: #fbf6ec; border-radius: 12px; border: 1px solid rgba(243,215,154,0.5); padding: 10px 14px; font-size: 13.5px; line-height: 1.6; box-shadow: 0 8px 26px rgba(0,0,0,0.4); transition: opacity .4s; }
 #guide-toast b { color: #f3d79a; display: block; font-size: 15px; }
+#guide-toast .g-tail { margin-top: 6px; color: #f3d79a; font-size: 13px; }
+#guide-nav .nav-retry { width: auto; padding: 0 10px; font: inherit; font-size: 12.5px; }
 @media (pointer: coarse) and (orientation: portrait) { #guide-nav { top: calc(env(safe-area-inset-top, 0px) + 112px); } #guide-toast { top: calc(env(safe-area-inset-top, 0px) + 170px); } #guide-card { right: 12px; left: 12px; width: auto; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); max-height: 86vh; max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); } }
 `;
 const fmtDist = (m) => (m < 1000 ? Math.round(m / 10) * 10 + ' م' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' كم');
@@ -342,7 +344,7 @@ export class Guide {
     this.card.querySelector('.g-x').addEventListener('click', () => this.hideCard());
     const q = this.card.querySelector('#guide-q');
     q.addEventListener('input', () => { this.q = q.value; this.fillList(); });
-    q.addEventListener('keydown', (e) => e.stopPropagation());   // typing must not drive the car
+    q.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') this.hideCard(); });   // typing must not drive the car
     this.card.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
       this.cat = b.dataset.cat; this.sub = 'all';
       this.card.querySelectorAll('[data-cat]').forEach((x) => x.setAttribute('aria-pressed', x === b));
@@ -440,8 +442,11 @@ export class Guide {
       if (!ok) {
         this.offline = true;   // guidance falls back to a straight arrow until the visitor retries
         const sp = this.nav.querySelector('span');
-        sp.textContent = 'تعذّر تحميل الطرق · اضغط هنا لإعادة المحاولة';
-        sp.style.cursor = 'pointer'; sp.onclick = () => { sp.onclick = null; sp.style.cursor = ''; if (this.dest === g) this.go(g); };
+        sp.textContent = 'تعذّر تحميل الطرق · ';
+        const rb = document.createElement('button'); rb.type = 'button'; rb.className = 'nav-retry'; rb.textContent = 'إعادة المحاولة';
+        rb.onclick = () => { rb.remove(); if (this.dest === g) this.go(g); };
+        sp.appendChild(rb);
+        rb.focus({ preventScroll: true });
         return;
       }
       this.offline = false;
@@ -499,6 +504,19 @@ export class Guide {
     clearTimeout(this.toastT);
     // longer when it offers choices (the language chips), so there is time to tap one
     this.toastT = setTimeout(() => { this.toast.style.opacity = 0; setTimeout(() => (this.toast.hidden = true), 450); }, extra ? 14000 : 8000);
+  }
+  // the trip is over: tell the story, stamp the passport, and move on to the next stop of a planned route.
+  // `tail` is how far the place still is when the roads end before it
+  arrive(g, tail) {
+    if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc);
+    if (tail > 150) this.toast.insertAdjacentHTML('beforeend', `<div class="g-tail">هذه أقرب نقطة على الطريق؛ ${esc(g.ar)} على بعد ${fmtDist(tail)} سيراً</div>`);
+    this.seen.set(g.key, performance.now()); this.clear();
+    const P = this.plan;
+    if (P && P.stops[P.i] === g) {
+      P.i++;
+      if (P.i < P.stops.length) this.go(P.stops[P.i]);
+      else { this.plan = null; setTimeout(() => this.note('انتهى مسارك', `زرت المحطات الـ${P.stops.length} كلها.`), 8500); }
+    }
   }
   // drawn on the minimap and the atlas
   drawOn(ctx, toScreen, scale) {
@@ -569,17 +587,7 @@ export class Guide {
     // guidance
     if (!this.dest || this.loading) return;
     const g = this.dest, left = Math.hypot(g.x - p.x, g.z - p.z);
-    if (left < (g.h > 150 ? 220 : 140)) {
-      if (this.near) this.near(g, true); else this.note('وصلت إلى ' + g.ar, g.desc);
-      this.seen.set(g.key, performance.now()); this.clear();
-      const P = this.plan;
-      if (P && P.stops[P.i] === g) {
-        P.i++;
-        if (P.i < P.stops.length) this.go(P.stops[P.i]);
-        else { this.plan = null; setTimeout(() => this.note('انتهى مسارك', `زرت المحطات الـ${P.stops.length} كلها.`), 8500); }
-      }
-      return;
-    }
+    if (left < (g.h > 150 ? 220 : 140)) { this.arrive(g, 0); return; }
     let tx = g.x, tz = g.z, remain = left;
     const R = this.route, mode = this.player.mode === 'person' ? 'walk' : this.player.mode === 'car' ? 'car' : null;
     if (mode && this.router && this.routeMode && mode !== this.routeMode && performance.now() - this.lastReroute > 1000) { this.reroute(); return; }
@@ -587,11 +595,17 @@ export class Guide {
       // follow progress along the route; reroute when far from it
       let bi = R.idx, bd = Infinity;
       for (let i = Math.max(0, R.idx - 5); i < Math.min(R.pts.length, R.idx + 60); i++) { const q = R.pts[i], dd = (q[0] - p.x) ** 2 + (q[1] - p.z) ** 2; if (dd < bd) { bd = dd; bi = i; } }
+      // lost the thread (a teleport, a shortcut): look along the whole route before giving up on it
+      if (bd > 45 * 45) for (let i = 0; i < R.pts.length; i++) { const q = R.pts[i], dd = (q[0] - p.x) ** 2 + (q[1] - p.z) ** 2; if (dd < bd) { bd = dd; bi = i; } }
       R.idx = bi;
       if (Math.sqrt(bd) > 45 && performance.now() - this.lastReroute > 2500) { this.reroute(); return; }
       let j = bi; while (j < R.pts.length - 1 && R.acc[j] - R.acc[bi] < 45) j++;
       tx = R.pts[j][0]; tz = R.pts[j][1];
-      remain = R.acc[R.acc.length - 1] - R.acc[bi] + Math.sqrt(bd);
+      // the roads stop short of some places (At-Turaif sits on a plateau of lanes 500 m from the nearest street):
+      // the distance left counts the last stretch from the route's end, and reaching that end completes the trip
+      const end = R.pts[R.pts.length - 1], tail = Math.hypot(g.x - end[0], g.z - end[1]), along = R.acc[R.acc.length - 1] - R.acc[bi];
+      remain = along + Math.sqrt(bd) + tail;
+      if (along < 25 && Math.hypot(end[0] - p.x, end[1] - p.z) < 35) { this.arrive(g, tail); return; }
     } else if (!R && this.player.mode !== 'heli' && performance.now() - (this.lastReroute || 0) > (this.noRoute ? 8000 : 3000)) { this.reroute(); }
     const camYaw = Math.atan2(-fwd.z, fwd.x), to = Math.atan2(-(tz - p.z), tx - p.x);
     const rel = Math.atan2(Math.sin(camYaw - to), Math.cos(camYaw - to));

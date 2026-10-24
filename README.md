@@ -2,11 +2,13 @@
 
 # Riyadh 360 · الرياض 360
 
-**A 3D Riyadh in the browser, built from real OpenStreetMap data · الرياض ثلاثية الأبعاد في المتصفح من بيانات الخريطة المفتوحة**
+**Interactive 3D City Explorer & Virtual Tours · مستكشف مدينة ثلاثي الأبعاد وجولات افتراضية تفاعلية**
+
+Built from real OpenStreetMap data · مبني من بيانات الخريطة المفتوحة الحقيقية
 
 [![Open it live](https://img.shields.io/badge/%E2%96%B6%20Open%20it%20live-%D8%A7%D9%81%D8%AA%D8%AD%20%D8%A7%D9%84%D9%85%D9%88%D9%82%D8%B9-1f9d63?style=for-the-badge)](https://aymn74.github.io/riyadh-360/)
 
-![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![No install](https://img.shields.io/badge/install-none-555) [![tests](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml/badge.svg)](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml) ![License](https://img.shields.io/badge/license-MIT-blue)
+![three.js](https://img.shields.io/badge/three.js-r170-222?logo=threedotjs) ![WebGL](https://img.shields.io/badge/WebGL-2-990000) ![Data](https://img.shields.io/badge/data-OpenStreetMap%20(ODbL)-7ebc6f?logo=openstreetmap) ![Languages](https://img.shields.io/badge/tour-6%20languages-d4a017) ![Status](https://img.shields.io/badge/status-public%20beta-e3a72f) ![No install](https://img.shields.io/badge/install-none-555) [![tests](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml/badge.svg)](https://github.com/Aymn74/riyadh-360/actions/workflows/test.yml) ![License](https://img.shields.io/badge/license-MIT-blue)
 
 <a href="https://aymn74.github.io/riyadh-360/"><img src="docs/hero.jpg" alt="Kingdom Centre and the Olaya towers at maghrib" width="100%"></a>
 
@@ -22,7 +24,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ## بالعربية
 
-**الرياض 360**: مدينة الرياض ثلاثية الأبعاد في المتصفح، مبنية من بيانات الخريطة المفتوحة الحقيقية: شوارعها ومبانيها وحدائقها وأنفاقها وجسورها. تجوّل فيها مشياً، أو بسيارة لاندكروزر، أو بطائرة هليكوبتر، أو دع الجولة السياحية تأخذك.
+**الرياض 360** (نسخة تجريبية عامة): مستكشف مدينة ثلاثي الأبعاد وجولات افتراضية تفاعلية للرياض في المتصفح، مبنية من بيانات الخريطة المفتوحة الحقيقية: شوارعها ومبانيها وحدائقها وأنفاقها وجسورها. تجوّل فيها مشياً، أو بسيارة لاندكروزر، أو بطائرة هليكوبتر، أو دع الجولة السياحية تأخذك.
 
 ### الاستكشاف
 - **ثلاث طرق للتنقل:** المشي، والقيادة، والطيران، في شوارع الرياض الحقيقية من طريق الملك فهد والعليا إلى الديرة والدرعية.
@@ -47,7 +49,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **ست لغات:** العربية، والإنجليزية، والفرنسية، والإسبانية، والألمانية، والصينية.
 - إيقاف مؤقت، والانتقال إلى التالي، وسرعة ×1 و×1.5 و×2.
 - **صمّم جولتك بنفسك:** اختر بحرية من قائمة كل المعالم، واقرأ نبذة عن كل معلم قبل إضافته، ورتّب المسار كما تشاء.
-- **اقترح أفضل مسار:** يرتّب المحطات لأقصر طريق يبدأ من موقعك، بمسافات الطرق الفعلية، ويعرض اتجاه كل مرحلة ومسافتها والمسافة الكلية ووقت القيادة. ثم اختر جولة جوية مع الراوي، أو قيادة على المسار ينتقل فيها الإرشاد من محطة إلى التالية.
+- **اقترح مساراً محسّناً:** يرتّب المحطات في مسار قصير يبدأ من موقعك، بمسافات الطرق الفعلية، ويعرض اتجاه كل مرحلة ومسافتها والمسافة الكلية ووقت القيادة (تقديرية). ثم اختر جولة جوية مع الراوي، أو قيادة على المسار ينتقل فيها الإرشاد من محطة إلى التالية.
 
 ### الراوي أثناء التجوال (زر السماعة)
 يحكي قصة كل معلم تقترب منه، ويذكر اسم الحي حين تدخله. تختار اللغة من زر اللغة في الشريط العلوي، أو من أزرار اللغات تحت بطاقة المعلم فيُعاد سرده باللغة الجديدة.
@@ -62,7 +64,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ## In English
 
-**Riyadh 360** is a 3D Riyadh in the browser, built from real OpenStreetMap data.
+**Riyadh 360** is an interactive 3D city explorer and virtual tour of Riyadh in the browser, built from real
+OpenStreetMap data. It is a public beta.
 
 ### Explore
 - **Walk, drive a white Land Cruiser, or fly a helicopter** through Riyadh's real streets.
@@ -93,8 +96,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **Six languages:** Arabic, English, French, Spanish, German, Chinese.
 - **Playback:** pause, skip, and ×1 / ×1.5 / ×2 speed.
 - **Design your own tour:** pick freely from every landmark, read about each one before adding it, and reorder the route.
-- **Suggest the best route** orders the stops for the shortest trip from where you are, on real road distances, and
-  shows each leg's direction and length, the total distance and the driving time. Then take it as a flying tour with
+- **Suggest an optimised route** orders the stops into a short trip from where you are, on real road distances, and
+  shows each leg's direction and length, the total distance and the driving time (estimates). Then take it as a flying tour with
   the narrator, or drive it: guidance moves on to the next stop each time you arrive.
 
 ### Narrator and tourist panel
@@ -125,7 +128,7 @@ Narration uses the browser's own speech voices, so the voices available depend o
 **Design your own tour · صمّم جولتك:** read about a landmark before adding it, the route ordered by road with each leg's
 direction and length, and the food list sorted into traditional, fast food, Asian and more.
 
-<img src="docs/custom-tour.jpg" alt="Four phone screens: picking landmarks with their notes, the best route by road, and the food filters" width="100%">
+<img src="docs/custom-tour.jpg" alt="Four phone screens: picking landmarks with their notes, an optimised route by road, and the food filters" width="100%">
 
 **In a tunnel · داخل النفق:** the Abi Bakr Al Siddiq tunnel at dusk and at night, with the steering wheel turned a quarter right.
 
@@ -185,13 +188,23 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
 
 To run it locally, serve the folder with any static server (for example `npx serve .`) and open `index.html`.
 
+## Limits of this beta
+
+- It is a city explorer, not a survey: most building heights are estimated (few are recorded in OpenStreetMap), and
+  the villas and shops along residential streets are generated. Hand-built landmarks follow their real outlines.
+- Driving is simplified for exploring, not a driving simulator.
+- Suggested routes are optimised, not proven shortest; distances and times are estimates.
+- Narration uses the device's own voices, so which languages can be heard depends on the device.
+- Tested in desktop and emulated phone browsers; performance on real phones still needs wider testing.
+
 ## Tests
 
 The tests open the full site in a browser and check what a visitor relies on: map names shown as text and never
 run, recovery after failed downloads, routes by car and on foot to every landmark, panels that fit small phone
-screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the graded gas pedal and reverse, changing language under a note, the sorting
+screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the graded gas pedal and reverse, changing language under a note, routes that end short of their landmark, keyboard use, the sorting
 of food and shopping, the best order of a custom tour, steering (an exit at 60 km/h, the touch wheel) and tunnels.
-They run on every push (GitHub Actions, `.github/workflows/test.yml`).
+They run on every push and pull request (GitHub Actions, `.github/workflows/test.yml`), and a push to `main` reaches
+the live site (the `gh-pages` branch) only after they pass. The runner works on Linux, macOS and Windows.
 
 ```
 cd tests && npm install && npx playwright install chromium

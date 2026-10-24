@@ -1,7 +1,11 @@
 name: tests
+# Every push and pull request is tested. A push to main is published to the gh-pages branch (which GitHub Pages
+# serves) only after the tests pass, so a failing change never reaches the live site.
 on:
   push:
+    branches: [main]
   pull_request:
+  workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -24,3 +28,16 @@ jobs:
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
           node run.mjs
+
+  publish:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency: { group: publish, cancel-in-progress: false }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Publish the tested commit to gh-pages
+        run: git push --force origin "${GITHUB_SHA}:refs/heads/gh-pages"

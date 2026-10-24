@@ -363,6 +363,9 @@ const input = { up: false, down: false, left: false, right: false, boost: false,
 const typing = () => document.activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName);
 addEventListener('keydown', (e) => {
   if (typing()) return;
+  // Space and Enter on a focused control press that control; they only drive when nothing is focused
+  const el = document.activeElement;
+  if ((e.code === 'Space' || e.code === 'Enter') && el && el !== document.body && el.matches('button, a[href], select, summary, [role="slider"], [role="menuitemradio"]')) return;
   keys[e.code] = true;
   const k = e.code;
   if (k === 'Digit1') setMode('person');
