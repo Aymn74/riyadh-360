@@ -112,7 +112,7 @@ Narration uses the browser's own speech voices, so the voices available depend o
 | **Qasr Al-Hokm** and the Grand Mosque at night · قصر الحكم وجامع الإمام تركي ليلاً | **Souq Al-Zal** after dark · سوق الزل ليلاً |
 | <img src="docs/redpalace.jpg" alt="The Red Palace with its white trim, portico and palm garden"> | <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> |
 | **The Red Palace** in its garden · القصر الأحمر | **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً |
-| <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower with Kingdom Centre behind it at noon"> | <img src="docs/library.jpg" alt="King Fahd National Library, a cube of white fabric diamonds around the old domed library"> |
+| <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower and its golden globe, with Kingdom Centre and its sky bridge behind, at noon"> | <img src="docs/library.jpg" alt="King Fahd National Library, a cube of white fabric diamonds around the old domed library"> |
 | **Al Faisaliah** and Kingdom Centre at noon · برج الفيصلية وبرج المملكة ظهراً | **King Fahd National Library** · مكتبة الملك فهد الوطنية |
 
 **On a phone · على الجوال:** the guided tour with narration, the guide with shopping and food, the tourist panel with prayer times, and road guidance with the driving pedals.
