@@ -281,6 +281,36 @@ function qasrHokm() {
   return g;
 }
 
+// Al-Thumairi Gate: a gate of the old city wall, rebuilt in mud brick, standing in the median of King Faisal Road
+function thumairi() {
+  const g = at('thumairi', 24.6310982, 46.7155074);
+  const nb = new Najdi(), trim = '#a98157', yaw = -77.2 * Math.PI / 180;   // along King Faisal Road
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const P = (u, v) => [u * c + v * s, -u * s + v * c];
+  // the gatehouse, its upper room and the two square towers that guard it
+  const house = rectRing(0, 0, 12, 8.5, yaw);
+  nb.prism(house, 0, 8.5, 'fort');
+  nb.merlons(house, 8.5, trim, { step: 1.4, w: 0.8, h: 1.1 });
+  const room = rectRing(0, 0, 6, 5, yaw);
+  nb.prism(room, 8.5, 11.5, 'mud');
+  nb.merlons(room, 11.5, trim, { step: 1.3, w: 0.7, h: 1.0 });
+  for (const u of [-8.2, 8.2]) {
+    const [x, z] = P(u, 0);
+    const t = nb.prism(rectRing(x, z, 5.4, 5.4, yaw), 0, 13, 'fort', { taper: 0.84 });
+    nb.merlons(t, 13, trim, { step: 1.2, w: 0.7, h: 1.0 });
+  }
+  // the palm-wood doors through the gate, on both faces, under a lintel of beams
+  for (const v of [-4.35, 4.35]) {
+    const [x, z] = P(0, v);
+    nb.box(x, z, 4.4, 0.3, 0, 5.6, '#b08a5d', yaw);
+    const [dx, dz] = P(0, v * 1.04);
+    nb.box(dx, dz, 3.4, 0.25, 0, 4.9, '#4a3020', yaw);
+  }
+  nb.cap(rectRing(0, 0, 30, 11, yaw), 0.09, '#d6c6a6');
+  g.add(nb.build());
+  return g;
+}
+
 // Souq Al-Zal: lanes of low shops under cloth shades, south of Deera Square
 function souqZal() {
   const g = at('zal', 24.62897, 46.71224);
@@ -337,7 +367,8 @@ function murabba() {
   return g;
 }
 
-// The Red Palace (1944): the kingdom's first reinforced-concrete building, red plaster with white trim
+// The Red Palace (1944): the kingdom's first reinforced-concrete building, red plaster with white trim. It stays in
+// the city but is no longer a tour or guide stop: it is being turned into a hotel
 function redPalace() {
   const g = at('redPalace', 24.6423, 46.709066);
   const nb = new Najdi(), yaw = TH, white = '#efe6d6';
@@ -539,12 +570,12 @@ function tuwaiq() {
 
 export function buildLandmarks(scene) {
   // the KAFD towers other than PIF Tower come from OpenStreetMap footprints
-  const list = [kingdomCentre(), faisaliah(), kafd(), rafal(), masmak(), deeraSquare(), grandMosque(), qasrHokm(), souqZal(), murabba(), redPalace(), museum(), library(), waterTower(), tvTower(), moi(), turaif(), wadiGroves(), tuwaiq()];
+  const list = [kingdomCentre(), faisaliah(), kafd(), rafal(), masmak(), deeraSquare(), grandMosque(), qasrHokm(), souqZal(), thumairi(), murabba(), redPalace(), museum(), library(), waterTower(), tvTower(), moi(), turaif(), wadiGroves(), tuwaiq()];
   for (const o of list) scene.add(o);
   return list;
 }
 // Colliders for walking/driving (world circles)
 export const LANDMARK_COLLIDERS = [
   ['kingdom', 62, 302], ['faisaliah', 34, 267], ['rafal', 30, 308], ['masmak', 36, 18], ['water', 8, 61], ['tv', 9, 170], ['moi', 30, 64], ['kafd', 30, 385],
-  ['turkiMosque', 52, 15], ['library', 70, 30], ['hokm', 42, 19], ['murabba', 21, 10], ['redPalace', 30, 13]
+  ['turkiMosque', 52, 15], ['library', 70, 30], ['hokm', 42, 19], ['murabba', 21, 10], ['redPalace', 30, 13], ['thumairi', 9, 13]
 ].map(([k, r, h]) => ({ x: PLACES[k].x, z: PLACES[k].z, r, h }));

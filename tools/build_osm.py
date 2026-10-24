@@ -39,8 +39,8 @@ P = {
 DROP = {'kingdom': 115, 'faisaliah': 62, 'rafal': 38, 'masmak': 48, 'water': 22, 'tv': 26, 'moi': 95, 'turaif': 360, 'pif': 45}
 DROPW = [(*place(*P[k]), r) for k, r in DROP.items()]
 # footprints replaced by hand-built models: the Grand Mosque, Qasr Al-Hokm and its bridges, Murabba Palace,
-# the National Museum and King Fahd Library
-DROP_IDS = {40589083, 43511290, 239102, 6196003, 53447619, 1385940112, 1385940114}
+# the National Museum, King Fahd Library and Al-Thumairi Gate
+DROP_IDS = {40589083, 43511290, 239102, 6196003, 53447619, 1385940112, 1385940114, 1385940122}
 # mud-brick quarters around Murabba Palace and in Diriyah (At-Turaif and the Bujairi terrace)
 # no generated villas on the grounds of the hand-built landmarks (Red Palace, Souq Al-Zal, Murabba, Deera...)
 NOFILL = DROPW + [(*place(la, lo), r) for la, lo, r in [

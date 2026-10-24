@@ -130,6 +130,7 @@ export const PLACES = {
   turkiMosque: { lat: 24.63092, lon: 46.7108, ar: 'جامع الإمام تركي بن عبدالله', en: 'Imam Turki bin Abdullah Grand Mosque' },
   murabba: { lat: 24.64652, lon: 46.70925, ar: 'قصر المربع', en: 'Murabba Palace' },
   redPalace: { lat: 24.6423, lon: 46.709066, ar: 'القصر الأحمر', en: 'The Red Palace' },
+  thumairi: { lat: 24.6310982, lon: 46.7155074, ar: 'بوابة الثميري', en: 'Al-Thumairi Gate' },
   ksu: { lat: 24.71968, lon: 46.62871, ar: 'جامعة الملك سعود', en: 'King Saud University' },
   pnu: { lat: 24.85232, lon: 46.71972, ar: 'جامعة الأميرة نورة', en: 'Princess Nourah University' },
   imamU: { lat: 24.81557, lon: 46.70416, ar: 'جامعة الإمام محمد بن سعود', en: 'Imam Mohammad Ibn Saud University' },

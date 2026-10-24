@@ -165,13 +165,13 @@ const STOPS = [
     de: 'Der Souk Al-Zal, einer der ältesten traditionellen Märkte Riads. Er ist bekannt für Bischts, Teppiche, Weihrauch und Parfüm und hat eine Auktion für alte Waren.',
     zh: '扎尔市场是利雅得最古老的传统市场之一，以长袍、地毯、熏香和香水闻名，还有旧货拍卖。'
   }],
-  ['redPalace', 16, {
-    ar: 'القصر الأحمر، بُني في الأربعينيات للأمير سعود بن عبدالعزيز حين كان ولياً للعهد. صار لاحقاً مقراً حكومياً، وهو اليوم متحف.',
-    en: 'The Red Palace, built in the 1940s for Prince Saud bin Abdulaziz when he was crown prince. It later became a government seat and is now a museum.',
-    fr: 'Le Palais rouge, construit dans les années 1940 pour le prince Saoud ben Abdelaziz, alors prince héritier. Il devint ensuite un siège gouvernemental et c\'est aujourd\'hui un musée.',
-    es: 'El Palacio Rojo, construido en los años cuarenta para el príncipe Saud bin Abdulaziz cuando era príncipe heredero. Más tarde fue sede de gobierno y hoy es un museo.',
-    de: 'Der Rote Palast, in den 1940er Jahren für Prinz Saud bin Abdulaziz erbaut, als er Kronprinz war. Später war er Regierungssitz, heute ist er ein Museum.',
-    zh: '红宫建于二十世纪四十年代，是为当时的王储沙特·本·阿卜杜勒阿齐兹亲王修建的，后来成为政府机构所在地，如今是一座博物馆。'
+  ['thumairi', 13, {
+    ar: 'بوابة الثميري، إحدى بوابات سور الرياض القديم، وكانت مدخل المدينة من جهة الشرق. هُدم السور في منتصف القرن العشرين، ثم أعيد بناء البوابة بالطين على طرازها النجدي، وتقف اليوم وسط طريق الملك فيصل قرب قصر المصمك.',
+    en: 'Al-Thumairi Gate, one of the gates in the wall of old Riyadh, through which the city opened to the east. The wall came down in the mid-twentieth century; the gate was rebuilt in mud brick in its Najdi style and now stands in the middle of King Faisal Road, near Masmak.',
+    fr: 'La porte d\'Al-Thumairi, l\'une des portes de l\'enceinte du vieux Riyad, par laquelle la ville s\'ouvrait vers l\'est. Le mur fut démoli au milieu du vingtième siècle ; la porte a été reconstruite en terre crue dans son style najdi et se dresse aujourd\'hui au milieu de la route du Roi-Fayçal, près de Masmak.',
+    es: 'La puerta de Al-Thumairi, una de las puertas de la muralla del antiguo Riad, por la que la ciudad se abría al este. La muralla se derribó a mediados del siglo veinte; la puerta se reconstruyó en adobe con su estilo najdí y hoy se alza en medio de la avenida del Rey Faisal, cerca de Masmak.',
+    de: 'Das Thumairi-Tor, eines der Tore in der Mauer des alten Riad, durch das sich die Stadt nach Osten öffnete. Die Mauer wurde Mitte des zwanzigsten Jahrhunderts abgerissen; das Tor wurde im Najdi-Stil aus Lehm wieder aufgebaut und steht heute mitten auf der König-Faisal-Straße, nahe Masmak.',
+    zh: '图麦里门是利雅得老城墙的城门之一，城市由此向东敞开。城墙在二十世纪中叶被拆除；城门后来以内志风格用泥砖重建，如今矗立在费萨尔国王路中央，靠近马斯马克城堡。'
   }],
   ['murabba', 16, {
     ar: 'قصر المربع، بناه الملك عبدالعزيز من الطين أواخر الثلاثينيات خارج أسوار الرياض القديمة. كان سكنه ومقر حكمه، وهو اليوم متحف ضمن مركز الملك عبدالعزيز التاريخي.',
@@ -210,17 +210,17 @@ const STOPS = [
 // themed tours: which stops each theme visits, and which stops matter most when time is short
 // travelling order: the old town, north past the towers, west to the Boulevard and the university, ending in Diriyah
 // stops that need a wider or higher circle: Tahlia is a street lined with towers, the library a 145 m cube,
-// the museum 330 m long
-const VIEW = { tahlia: { r: 320, y: 250, ly: 0 }, library: { r: 175, y: 70, ly: 14 }, museum: { r: 240, y: 85, ly: 10 } };
-const ORDER = ['hokm', 'turkiMosque', 'masmak', 'zal', 'redPalace', 'water', 'murabba', 'museum', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'rafal', 'kafd', 'boulevard', 'ksu', 'bujairi', 'turaif'];
+// the museum 330 m long, and Al-Thumairi Gate is small enough to need a close look
+const VIEW = { tahlia: { r: 320, y: 250, ly: 0 }, library: { r: 175, y: 70, ly: 14 }, museum: { r: 240, y: 85, ly: 10 }, thumairi: { r: 48, y: 19, ly: 6 } };
+const ORDER = ['hokm', 'turkiMosque', 'masmak', 'thumairi', 'zal', 'water', 'murabba', 'museum', 'tv', 'moi', 'library', 'faisaliah', 'tahlia', 'kingdom', 'rafal', 'kafd', 'boulevard', 'ksu', 'bujairi', 'turaif'];
 const THEMES = {
   all: ORDER,
-  history: ['hokm', 'masmak', 'zal', 'redPalace', 'murabba', 'museum', 'turaif'],
+  history: ['hokm', 'masmak', 'thumairi', 'zal', 'murabba', 'museum', 'turaif'],
   towers: ['tv', 'faisaliah', 'kingdom', 'rafal', 'kafd'],
   culture: ['turkiMosque', 'museum', 'moi', 'library', 'faisaliah', 'kingdom', 'ksu'],
   market: ['zal', 'tahlia', 'boulevard', 'bujairi']
 };
-const RANK = ['kingdom', 'masmak', 'faisaliah', 'turaif', 'kafd', 'museum', 'zal', 'murabba', 'hokm', 'turkiMosque', 'ksu', 'boulevard', 'bujairi', 'library', 'tahlia', 'rafal', 'tv', 'moi', 'water', 'redPalace'];
+const RANK = ['kingdom', 'masmak', 'faisaliah', 'turaif', 'kafd', 'museum', 'zal', 'murabba', 'hokm', 'turkiMosque', 'ksu', 'boulevard', 'bujairi', 'library', 'tahlia', 'rafal', 'tv', 'moi', 'water', 'thumairi'];
 const DURS = { short: { max: 4, brief: true }, medium: { max: 7, brief: false }, full: { max: 99, brief: false } };
 const B = {
   ar: { design: 'صمّم جولتك', theme: 'الموضوع', length: 'المدة', themes: { all: 'شاملة', history: 'تاريخية', towers: 'الأبراج', culture: 'عمارة وثقافة', market: 'أسواق ومطاعم' }, durs: { short: 'قصيرة', medium: 'متوسطة', full: 'كاملة' }, about: 'نحو', min: 'دقيقة', stops: 'محطات', go: 'ابدأ الجولة', cancel: 'إلغاء' },

@@ -26,7 +26,7 @@ const SPOTS = [
   ['thumairi', 14, 'heritage', 18, 'إحدى بوابات سور الرياض القديم، وحولها سوق الثميري للتحف والسجاد والهدايا التقليدية.', 'A gate of old walled Riyadh, with the Thumairi market for antiques, carpets and traditional gifts.'],
   ['water', 64, 'modern', 19, 'برج مياه الرياض بشكله المميز، من معالم السبعينيات قرب حي المربع.', 'The Riyadh Water Tower, a distinctive 1970s landmark near Al Murabba.'],
   ['salam', 14, 'leisure', 20, 'من أكبر الحدائق في وسط الرياض، وفيها بحيرة واسعة.', 'One of the largest parks in central Riyadh, with a wide lake.'],
-  ['redPalace', 16, 'heritage', 21, 'قصر بُني في الأربعينيات للأمير سعود بن عبدالعزيز حين كان ولياً للعهد، وسُمّي بلونه الأحمر، ثم صار مقراً حكومياً قبل أن يصبح متحفاً.', 'A palace built in the 1940s for Crown Prince Saud, named for its red colour, later a government seat and now a museum.'],
+  ['thumairi', 13, 'heritage', 21, 'إحدى بوابات سور الرياض القديم، أعيد بناؤها بالطين على طرازها النجدي، وتقف وسط طريق الملك فيصل قرب قصر المصمك.', 'One of the gates in the wall of old Riyadh, rebuilt in mud brick in its Najdi style; it stands in the middle of King Faisal Road near Masmak.'],
   ['pnu', 30, 'edu', 22, 'أكبر جامعة للنساء في العالم، بحرم واسع في شمال الرياض يخدمه قطار داخلي خاص.', 'The largest women\'s university in the world, a vast campus in north Riyadh with its own automated train.'],
   ['rajhiMosque', 45, 'faith', 23, 'من أكبر جوامع الرياض، في شرق المدينة.', 'One of the largest mosques in Riyadh, in the east of the city.'],
   ['tv', 172, 'modern', 24, 'برج التلفزيون بارتفاع 170 م، افتُتح عام 1978.', 'The 170 m TV Tower, opened in 1978.'],

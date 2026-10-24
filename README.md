@@ -29,7 +29,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 ### الاستكشاف
 - **ثلاث طرق للتنقل:** المشي، والقيادة، والطيران، في شوارع الرياض الحقيقية من طريق الملك فهد والعليا إلى الديرة والدرعية.
 - **أنفاق وجسور:** الطرق تنزل في الأنفاق وترتفع على الجسور كما في الواقع. داخل النفق جدران مكسوة بشريط أزرق، وصفّان متصلان من المصابيح، وممشى بحافة صفراء وسوداء، وأضواء إرشاد، ولوحات طوارئ ومراوح تهوية؛ ويخفت ضوء النهار وتتكيف العين فيبهر ضوء المخرج.
-- **الرياض القديمة بالطراز النجدي:** المصمك، وجامع الإمام تركي بمئذنتيه وجسوره إلى قصر الحكم، وسوق الزل، وقصر المربع، والقصر الأحمر، والمتحف الوطني، ومكتبة الملك فهد، مبنية على مخططاتها الحقيقية بجدران الطين والحجر والشرفات المثلثة، ومضاءة ليلاً.
+- **الرياض القديمة بالطراز النجدي:** المصمك، وجامع الإمام تركي بمئذنتيه وجسوره إلى قصر الحكم، وسوق الزل، وبوابة الثميري، وقصر المربع، والمتحف الوطني، ومكتبة الملك فهد، مبنية على مخططاتها الحقيقية بجدران الطين والحجر والشرفات المثلثة، ومضاءة ليلاً.
 - **أربعة أوقات:** الظهيرة، والمغرب، والليل بإضاءة الشوارع والمباني، والهبوب (عاصفة رملية).
 - **حركة مرور** تسير على شبكة الطرق الفعلية وتلتزم بحدود السرعة.
 - **على الجوال:** مقود حقيقي تديره بإصبعك حتى 150° في كل اتجاه ويعود إلى المنتصف عند تركه؛ ودواسة وقود متدرجة (كلما ضغطت أعلى زادت السرعة، وأعلاها تيربو)؛ وفرامل توقف السيارة؛ وزر ناقل حركة للرجوع للخلف؛ وكاميرا مضبوطة للشاشة العمودية.
@@ -73,7 +73,7 @@ OpenStreetMap data. It is a public beta.
   two continuous rows of lamps, a walkway with a painted kerb, amber guidance lights, emergency signs and jet fans; the
   daylight fades, the eye adapts, and the exit glares.
 - **Old Riyadh in Najdi style:** Masmak, the Grand Mosque with its minarets and bridges to Qasr Al-Hokm, Souq Al-Zal,
-  Murabba Palace, the Red Palace, the National Museum and King Fahd Library, built on their real outlines and floodlit at night.
+  Murabba Palace, Al-Thumairi Gate, the National Museum and King Fahd Library, built on their real outlines and floodlit at night.
 - **Four times of day:** noon, maghrib, night with street and building lights, and haboob (a sandstorm).
 - **Traffic** follows the real road network and speed limits.
 - **On phones:** a real steering wheel turned by circling your thumb, up to 150° each way, that springs back when let go;
@@ -116,8 +116,8 @@ Narration uses the browser's own speech voices, so the voices available depend o
 | **Masmak Fortress**, where the story of modern Riyadh began · قصر المصمك | **At-Turaif, Diriyah** at sunset · حي الطريف في الدرعية |
 | <img src="docs/hokm-night.jpg" alt="Qasr Al-Hokm and the minarets of the Grand Mosque floodlit at night"> | <img src="docs/souq-night.jpg" alt="The lit shops of Souq Al-Zal under cloth shades, with Qasr Al-Hokm behind"> |
 | **Qasr Al-Hokm** and the Grand Mosque at night · قصر الحكم وجامع الإمام تركي ليلاً | **Souq Al-Zal** after dark · سوق الزل ليلاً |
-| <img src="docs/redpalace.jpg" alt="The Red Palace with its white trim, portico and palm garden"> | <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> |
-| **The Red Palace** in its garden · القصر الأحمر | **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً |
+| <img src="docs/thumairi.jpg" alt="Al-Thumairi Gate in the median of King Faisal Road, with the minarets of the Grand Mosque behind"> | <img src="docs/night.jpg" alt="Driving the Land Cruiser on King Fahd Road at night"> |
+| **Al-Thumairi Gate**, a gate of the old city wall · بوابة الثميري | **King Fahd Road at night**, with street and building lights · طريق الملك فهد ليلاً |
 | <img src="docs/faisaliah.jpg" alt="Al Faisaliah Tower and its golden globe, with Kingdom Centre and its sky bridge behind, at noon"> | <img src="docs/library.jpg" alt="King Fahd National Library, a cube of white fabric diamonds around the old domed library"> |
 | **Al Faisaliah** and Kingdom Centre at noon · برج الفيصلية وبرج المملكة ظهراً | **King Fahd National Library** · مكتبة الملك فهد الوطنية |
 
@@ -167,7 +167,7 @@ for f in data/*.bin; do base64 -w 0 "$f" > "${f%.bin}.b64.txt"; done   # the pag
   At-Turaif are hand-built models at their OSM positions.
 - The old town is hand-built on the real OSM outlines in Najdi style, with mud and limestone walls, triangular vents
   and merlons, floodlit at night: Masmak Fortress, Deera Square, the Imam Turki bin Abdullah Grand Mosque with its two
-  minarets and the bridges to Qasr Al-Hokm, Souq Al-Zal, Murabba Palace, the Red Palace, the National Museum and its
+  minarets and the bridges to Qasr Al-Hokm, Souq Al-Zal, Al-Thumairi Gate, Murabba Palace, the Red Palace, the National Museum and its
   curved wall, and King Fahd National Library in its cube of white fabric diamonds. Diriyah and the Murabba quarter
   are drawn in mud brick.
 
