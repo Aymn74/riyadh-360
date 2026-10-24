@@ -384,9 +384,10 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function readKeys() {
-  input.up = keys.KeyW || keys.ArrowUp || touchGas; input.down = keys.KeyS || keys.ArrowDown || touchBrake;
+  input.up = keys.KeyW || keys.ArrowUp; input.down = keys.KeyS || keys.ArrowDown;
+  input.pedal = gearR ? -gasLevel : gasLevel; input.hold = touchBrake;
   input.left = keys.KeyA || keys.ArrowLeft; input.right = keys.KeyD || keys.ArrowRight;
-  input.boost = keys.ShiftLeft || keys.ShiftRight || touchBoost;
+  input.boost = keys.ShiftLeft || keys.ShiftRight || touchBoost || (gasBoost && !gearR);
   input.jump = keys.Space || keys.KeyE || keys.PageUp || touchUp;
   input.descend = keys.KeyQ || keys.PageDown || keys.ControlLeft || touchDown;
 }
@@ -405,8 +406,8 @@ function readKeys() {
   el.addEventListener('wheel', (e) => { orbitCtl.zoom = THREE.MathUtils.clamp(orbitCtl.zoom * Math.exp(e.deltaY * 0.001), 0.35, 6); e.preventDefault(); }, { passive: false });
 }
 // touch: joystick on the left, drag elsewhere to look
-let touchUp = false, touchDown = false, touchBoost = false, touchGas = false, touchBrake = false;
-let wheelTick = null;
+let touchUp = false, touchDown = false, touchBoost = false, touchBrake = false;
+let wheelTick = null, setGear = () => {};
 if (touch) {
   $('touch-controls').hidden = false;
   const stick = $('touch-stick'), knob = $('touch-stick-knob');
@@ -476,8 +477,26 @@ if (touch) {
   const up = (e) => pts.delete(e.pointerId);
   el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
 }
-document.querySelectorAll('.touch-action').forEach((b) => {
-  const set = (v) => { const a = b.dataset.touchAction; if (a === 'up') touchUp = v; if (a === 'down') touchDown = v; if (a === 'boost') touchBoost = v; if (a === 'gas') touchGas = v; if (a === 'brake') touchBrake = v; b.setAttribute('aria-pressed', v); };
+// driving: a graded gas pedal (the higher the thumb, the harder the throttle; its top fifth is turbo) and a
+// gear button for reverse; the brake pedal only stops the car
+let gasLevel = 0, gasBoost = false, gearR = false;
+{
+  const gas = $('gas-pedal'), gear = $('gear-btn');
+  let gid = null;
+  const feel = (e) => {
+    const r = gas.getBoundingClientRect(), f = THREE.MathUtils.clamp((r.bottom - e.clientY) / r.height, 0, 1);
+    gasLevel = 0.3 + 0.7 * Math.min(1, f / 0.8); gasBoost = f > 0.8;
+    gas.style.setProperty('--lvl', Math.round(f * 100) + '%'); gas.setAttribute('aria-pressed', 'true');
+  };
+  gas.addEventListener('pointerdown', (e) => { e.preventDefault(); gid = e.pointerId; try { gas.setPointerCapture(gid); } catch (err) { /* gone */ } feel(e); });
+  gas.addEventListener('pointermove', (e) => { if (e.pointerId === gid) feel(e); });
+  const off = (e) => { if (e.pointerId !== gid) return; gid = null; gasLevel = 0; gasBoost = false; gas.style.setProperty('--lvl', '0%'); gas.setAttribute('aria-pressed', 'false'); };
+  gas.addEventListener('pointerup', off); gas.addEventListener('pointercancel', off);
+  setGear = (r) => { gearR = r; gear.setAttribute('aria-pressed', r); gear.innerHTML = r ? '<b>R</b><small>رجوع</small>' : '<b>D</b><small>أمام</small>'; };
+  gear.addEventListener('click', () => setGear(!gearR));
+}
+document.querySelectorAll('.touch-action[data-touch-action]').forEach((b) => {
+  const set = (v) => { const a = b.dataset.touchAction; if (a === 'up') touchUp = v; if (a === 'down') touchDown = v; if (a === 'boost') touchBoost = v; if (a === 'brake') touchBrake = v; b.setAttribute('aria-pressed', v); };
   b.addEventListener('pointerdown', (e) => { e.preventDefault(); set(true); });
   b.addEventListener('pointerup', () => set(false)); b.addEventListener('pointerleave', () => set(false)); b.addEventListener('pointercancel', () => set(false));
 });
@@ -500,6 +519,7 @@ const HINTS = {
 };
 function setMode(m) {
   player.setMode(m);
+  setGear(false);
   document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === m));
   $('hud-active-mode').textContent = player.modeInfo.label;
   $('hud-controls-hint').textContent = touch ? '' : HINTS[m];
@@ -854,7 +874,11 @@ function updateHud(dt, fps) {
 }
 
 // ---------- main loop ----------
-let guide = null, tour = null, tourist = null, lastDistrict = '', lastDistrictT = 0;
+let guide = null, tour = null, tourist = null, lastDistrict = '', lastDistrictT = 0, lastNear = null;
+const LCODE = { ar: 'ع', en: 'EN', fr: 'FR', es: 'ES', de: 'DE', zh: '中' };
+// one language for the narrator, the landmark notes and the tours, chosen from the toolbar or under any note
+function setLang(id) { tour.setLang(id); syncLang(); }
+function syncLang() { const c = document.querySelector('#btn-lang .lang-code'); if (c && tour) c.textContent = LCODE[tour.lang]; }
 const IDLE = { ax: 0, ay: 0, az: 0 };
 const clock = new THREE.Clock();
 let fpsAvg = 60, slowT = 0, detailR = touch ? 1000 : 1500, farR = touch ? 5000 : 8000;
@@ -922,6 +946,7 @@ function frame(ts) {
   if (mmTimer <= 0 && !document.body.classList.contains('hud-hidden')) { mmTimer = 0.1; drawMinimap(); }
   if (!$('fullmap-modal').hidden) drawAtlas();
   updateHud(frameDt, fpsAvg);
+  if (tour && document.querySelector('#btn-lang .lang-code')?.textContent !== LCODE[tour.lang]) syncLang();   // the tour panel may change it too
   // adaptive detail
   if (fpsAvg < 26) { slowT += frameDt; if (slowT > 4 && detailR > 800) { detailR -= 200; farR = Math.max(4000, farR - 1000); slowT = 0; } } else slowT = 0;
   requestAnimationFrame(frame);
@@ -951,11 +976,17 @@ async function boot() {
       teleport(t); setCamera('chase');
     } });
     // the narrator speaks the guide's notes, in the tour's language
-    const narrate = (g, arrived) => {
-      if (arrived || (tourist && Math.hypot(player.pos.x - tourist.spawn.x, player.pos.z - tourist.spawn.z) > 150)) tourist?.stamp(g.key);   // not for the spot the visitor starts on
+    const narrate = (g, arrived, again) => {
+      if (!again && (arrived || (tourist && Math.hypot(player.pos.x - tourist.spawn.x, player.pos.z - tourist.spawn.z) > 150))) tourist?.stamp(g.key);   // not for the spot the visitor starts on
+      lastNear = { g, arrived };
       const story = tour.storyFor(g.key) || (tour.lang === 'ar' ? g.desc : g.descEn) || '';
       const name = tour.lang === 'ar' ? g.ar : g.en;
-      guide.note((arrived ? ARRIVED[tour.lang] : '') + name, story || g.desc, story ? tour.dir : 'rtl');
+      // a row of languages under the note: a tap retells this landmark in that language and keeps it for the next ones
+      const chips = document.createElement('div');
+      chips.className = 'lang-chips';
+      chips.innerHTML = LANGS.map((l) => `<button type="button" data-lang="${l.id}" aria-pressed="${l.id === tour.lang}" title="${l.name}">${LCODE[l.id]}</button>`).join('');
+      chips.onclick = (e) => { const b = e.target.closest('[data-lang]'); if (b) { setLang(b.dataset.lang); narrate(g, arrived, true); } };
+      guide.note((arrived ? ARRIVED[tour.lang] : '') + name, story || g.desc, story ? tour.dir : 'rtl', chips);
       tour.speakFree((arrived ? ARRIVED[tour.lang] : '') + name + '. ' + story, true);
     };
     guide = new Guide({ scene, camera, osm, player, startTour, teleport: (key) => {
@@ -994,6 +1025,31 @@ async function boot() {
     const syncNarrator = () => { nb.setAttribute('aria-pressed', tour.narrator); nb.classList.toggle('muted', !tour.narrator); };
     nb.onclick = () => { tour.setNarrator(!tour.narrator); syncNarrator(); if (tour.narrator) tour.speakFree(tour.lang === 'ar' ? 'الراوي يعمل' : 'Narrator on', true); };
     syncNarrator();
+    {
+      const lb = $('btn-lang');
+      let menu = null;
+      const close = () => { if (!menu) return; menu.remove(); menu = null; lb.setAttribute('aria-expanded', 'false'); };
+      lb.onclick = (e) => {
+        e.stopPropagation();
+        if (menu) { close(); return; }
+        menu = document.createElement('div'); menu.id = 'lang-menu'; menu.setAttribute('role', 'menu');
+        menu.innerHTML = LANGS.map((l) => `<button type="button" role="menuitemradio" aria-checked="${l.id === tour.lang}" data-lang="${l.id}" dir="${l.dir}">${LCODE[l.id]} · ${l.name}</button>`).join('');
+        document.body.appendChild(menu);
+        const r = lb.getBoundingClientRect();
+        menu.style.top = Math.min(innerHeight - menu.offsetHeight - 8, r.bottom + 6) + 'px';
+        menu.style.left = Math.max(8, Math.min(innerWidth - menu.offsetWidth - 8, r.left + r.width / 2 - menu.offsetWidth / 2)) + 'px';
+        lb.setAttribute('aria-expanded', 'true');
+        menu.querySelector('[aria-checked="true"]')?.focus({ preventScroll: true });
+        menu.onclick = (ev) => {
+          const b = ev.target.closest('[data-lang]'); if (!b) return;
+          setLang(b.dataset.lang); close(); lb.focus({ preventScroll: true });
+          if (lastNear) narrate(lastNear.g, lastNear.arrived, true);   // retell the landmark just passed
+        };
+      };
+      document.addEventListener('click', (e) => { if (menu && !menu.contains(e.target)) close(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menu) { close(); lb.focus({ preventScroll: true }); } });
+      syncLang();
+    }
     player.osm = osm;
     status('بناء المعالم: برج المملكة، الفيصلية، المصمك…', 0.45);
     buildLandmarks(scene);

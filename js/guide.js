@@ -491,12 +491,14 @@ export class Guide {
     this.mesh = new THREE.Mesh(geo, this.mat); this.mesh.renderOrder = 4; this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
   }
-  note(title, text, dir = 'rtl') {
+  note(title, text, dir = 'rtl', extra = null) {
     this.toast.dir = dir;
     this.toast.innerHTML = `<b>${esc(title)}</b>${esc(text)}`;
+    if (extra) this.toast.appendChild(extra);
     this.toast.hidden = false; this.toast.style.opacity = 1;
     clearTimeout(this.toastT);
-    this.toastT = setTimeout(() => { this.toast.style.opacity = 0; setTimeout(() => (this.toast.hidden = true), 450); }, 8000);
+    // longer when it offers choices (the language chips), so there is time to tap one
+    this.toastT = setTimeout(() => { this.toast.style.opacity = 0; setTimeout(() => (this.toast.hidden = true), 450); }, extra ? 14000 : 8000);
   }
   // drawn on the minimap and the atlas
   drawOn(ctx, toScreen, scale) {

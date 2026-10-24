@@ -211,7 +211,7 @@ await test('a custom tour orders its stops for the shortest trip and can be driv
   await close();
 });
 
-await test('the car turns tightly enough for an exit at 60 km/h, and lane keeping waits for the driver to let go', async () => {
+await test('the car turns sharply: a 4 m circle at walking pace and an exit at 60 km/h, and lane keeping waits for the driver to let go', async () => {
   const { page, close } = await open();
   await ready(page);
   const r = await page.evaluate(() => {
@@ -222,13 +222,13 @@ await test('the car turns tightly enough for an exit at 60 km/h, and lane keepin
     p.yaw = 0; p.steer = 0; p.speed = 16.7;
     const y0 = p.yaw; run(2, { up: false, left: true });
     const turned = p.yaw - y0, kmh = p.speed * 3.6;
-    // full lock at walking pace: about a 6 m circle
+    // full lock at walking pace: about a 4 m circle, tight enough for a U-turn
     p.speed = 2; p.steer = 1; const y1 = p.yaw; for (let t = 0; t < 1; t += 1 / 60) p.update(1 / 60, { left: true }, null);
     const slowRate = p.yaw - y1, radius = 2 / Math.max(1e-6, slowRate);
     return { turned, kmh, radius };
   });
-  // at 60 km/h a full lock for two seconds swings the car through more than 60 degrees (a 30 m arc)
-  assert(r.turned > 0.95 && r.kmh > 55 && r.radius > 5 && r.radius < 7.5, JSON.stringify(r));
+  // at 60 km/h a full lock for two seconds swings the car through about 80 degrees
+  assert(r.turned > 1.2 && r.kmh > 55 && r.radius > 3.4 && r.radius < 4.8, JSON.stringify(r));
   await close();
 });
 
@@ -278,6 +278,52 @@ await test('inside a tunnel the daylight fades and the driver\'s seat stays insi
     return { gy: p.gy, dimmed, eye };
   });
   assert(r.gy < -5 && r.dimmed < 0.3 && r.eye < r.gy + 2.5 && r.eye > r.gy, JSON.stringify(r));
+  await close();
+});
+
+await test('the gas pedal is graded with turbo at its top, the gear button reverses, the brake only stops', async () => {
+  const { page, close } = await open({ width: 390, height: 780, mobile: true });
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const R = __riyadh, p = R.player;
+    const frames = (n) => new Promise((res) => { const f0 = R.renderer.info.render.frame; const t = () => (R.renderer.info.render.frame - f0 >= n ? res() : setTimeout(t, 50)); t(); });
+    R.setMode('car'); p.osm = null; p.speed = 0;
+    const gas = document.getElementById('gas-pedal'), b = gas.getBoundingClientRect(), brake = document.querySelector('[data-touch-action="brake"]');
+    const press = (el, t, y) => el.dispatchEvent(new PointerEvent(t, { pointerId: 4, clientX: b.left + b.width / 2, clientY: y, bubbles: true, pointerType: 'touch' }));
+    press(gas, 'pointerdown', b.top + b.height * 0.05);           // the turbo zone
+    await frames(6);
+    const boost = { speed: p.speed, lvl: gas.style.getPropertyValue('--lvl') };
+    press(gas, 'pointerup', b.top);
+    brake.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 5, bubbles: true, pointerType: 'touch' }));
+    await frames(40);
+    const stopped = p.speed;
+    brake.dispatchEvent(new PointerEvent('pointerup', { pointerId: 5, bubbles: true, pointerType: 'touch' }));
+    document.getElementById('gear-btn').click();
+    press(gas, 'pointerdown', b.bottom - b.height * 0.3);
+    await frames(10);
+    const back = p.speed, label = document.getElementById('gear-btn').textContent;
+    press(gas, 'pointerup', b.bottom);
+    return { boost, stopped, back, label };
+  });
+  assert(r.boost.speed > 1 && r.boost.lvl === '95%' && Math.abs(r.stopped) < 0.3 && r.back < -0.3 && /R/.test(r.label), JSON.stringify(r));
+  await close();
+});
+
+await test('the narrator\'s language can be changed from the toolbar or under a landmark note, and the note is retold', async () => {
+  const { page, close } = await open();
+  await ready(page);
+  const r = await page.evaluate(async () => {
+    const R = __riyadh, { GUIDE } = await import('./js/guide.js');
+    R.tour.setLang('ar');
+    R.guide.near(GUIDE.find((g) => g.key === 'masmak'), false);
+    const toast = document.getElementById('guide-toast'), before = toast.querySelector('b').textContent;
+    toast.querySelector('[data-lang="en"]').click();
+    const en = { title: toast.querySelector('b').textContent, lang: R.tour.lang, code: document.querySelector('#btn-lang .lang-code').textContent };
+    document.getElementById('btn-lang').click();
+    document.querySelector('#lang-menu [data-lang="fr"]').click();
+    return { before, en, fr: { lang: R.tour.lang, title: toast.querySelector('b').textContent, menu: !!document.getElementById('lang-menu') } };
+  });
+  assert(r.before === 'قصر المصمك' && r.en.title === 'Masmak Fortress' && r.en.lang === 'en' && r.en.code === 'EN' && r.fr.lang === 'fr' && !r.fr.menu && /Masmak/.test(r.fr.title), JSON.stringify(r));
   await close();
 });
 

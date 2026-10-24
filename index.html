@@ -75,6 +75,13 @@ body.hud-hidden .brand, body.hud-hidden .hud-bottom { opacity: 0; visibility: hi
 .toolbar-divider { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
 .icon-only { padding: 0 9px; }
 #btn-narrator.muted { opacity: .45; } #btn-narrator.muted .icon { stroke-dasharray: 2 2; }
+.lang-code { display: inline-grid; place-items: center; min-width: 20px; height: 20px; font-size: 12.5px; font-weight: 800; line-height: 1; }
+#lang-menu { position: fixed; z-index: 40; display: grid; gap: 4px; padding: 6px; background: rgba(26,21,16,0.96); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+#lang-menu button { height: 36px; min-width: 132px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: #fbf6ec; font: inherit; font-size: 14px; text-align: start; cursor: pointer; }
+#lang-menu button[aria-checked="true"] { background: #f3d79a; color: #2a1d10; font-weight: 700; }
+.lang-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; direction: ltr; }
+.lang-chips button { height: 26px; min-width: 32px; padding: 0 8px; border-radius: 999px; border: 1px solid rgba(243,215,154,.45); background: transparent; color: #fbf6ec; font: inherit; font-size: 12px; cursor: pointer; }
+.lang-chips button[aria-pressed="true"] { background: #f3d79a; color: #2a1d10; border-color: #f3d79a; }
 .icon-show { display: none; }
 body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { display: block; }
 
@@ -202,7 +209,16 @@ body.hud-hidden .icon-hide { display: none; } body.hud-hidden .icon-show { displ
 .pedal { border-radius: 16px; width: 70px; }
 .pedal.brake { height: 74px; background: rgba(60,22,18,0.65); }
 .pedal.gas { height: 108px; background: rgba(20,60,40,0.65); }
-.pedal[aria-pressed="true"].gas { background: #1f9d63; color: #fff; } .pedal[aria-pressed="true"].brake { background: #c0392b; color: #fff; }
+.pedal[aria-pressed="true"].brake { background: #c0392b; color: #fff; }
+/* the gas pedal is graded: the higher the thumb presses, the harder the throttle; its top fifth is turbo */
+.pedal.gas { height: 140px; position: relative; overflow: hidden; display: grid; place-items: end center; padding-bottom: 12px; box-sizing: border-box; }
+.pedal.gas .lvl { position: absolute; left: 0; right: 0; bottom: 0; height: var(--lvl, 0%); background: linear-gradient(0deg, #1f9d63, #e3a72f); opacity: .85; pointer-events: none; }
+.pedal.gas em { position: absolute; top: 0; left: 0; right: 0; height: 20%; display: grid; place-items: center; font-style: normal; font-size: 10.5px; color: #f3d79a; border-bottom: 1px dashed rgba(243,215,154,.55); background: rgba(227,167,47,.12); pointer-events: none; }
+.pedal.gas span { position: relative; pointer-events: none; }
+.pedal.gear { height: 58px; width: 54px; border-radius: 14px; display: grid; place-items: center; align-content: center; gap: 0; background: rgba(28,22,17,0.7); }
+.pedal.gear b { font-size: 20px; line-height: 1; } .pedal.gear small { font-size: 10px; }
+.pedal.gear[aria-pressed="true"] { background: #c0392b; color: #fff; }
+body.driving-touch .touch-action[data-touch-action="boost"] { display: none; }
 body.driving-touch .touch-actions { display: flex; align-items: flex-end; gap: 10px; direction: ltr; }
 /* driving: a real steering wheel under the left thumb instead of the stick */
 #touch-wheel { display: none; pointer-events: auto; width: 150px; height: 150px; touch-action: none; border-radius: 50%; }
@@ -210,15 +226,15 @@ body.driving-touch .touch-actions { display: flex; align-items: flex-end; gap: 1
 body.driving-touch #touch-wheel { display: block; }
 body.driving-touch #touch-stick { display: none; }
 @media (pointer: coarse) and (orientation: landscape) { #touch-wheel { width: 132px; height: 132px; } }
-body.driving-touch .touch-action[data-touch-action="boost"] { width: 54px; height: 54px; font-size: 11px; }
 /* phones upright: the middle of the screen is the road ahead, so the map and the sign sit low on the right, above the turbo button */
 @media (pointer: coarse) and (orientation: portrait) {
-  .dock-start { top: auto; bottom: calc(206px + env(safe-area-inset-bottom, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); flex-direction: row; align-items: flex-end; gap: 8px; }
+  .dock-start { top: auto; bottom: calc(240px + env(safe-area-inset-bottom, 0px)); right: max(14px, env(safe-area-inset-right, 0px)); flex-direction: row; align-items: flex-end; gap: 8px; }
   .radar { width: 82px; height: 82px; opacity: .92; }
   .sign { max-width: 132px; padding: 4px 8px 5px; border-width: 1.5px; border-radius: 6px; }
   .sign-ar { font-size: 12.5px; line-height: 1.3; }
   .sign-en { display: none; }
-  .toolbar .time-btn, .toolbar .tool-btn { height: 30px; padding: 0 6px; }
+  .toolbar { gap: 2px; }
+  .toolbar .time-btn, .toolbar .tool-btn { height: 30px; padding: 0 3px; min-width: 28px; }
   .toolbar .toolbar-divider { display: none; }
 }
 /* computers: only the climb and descend buttons, at the right edge, while flying */
@@ -290,6 +306,7 @@ body.driving-touch .touch-action[data-touch-action="boost"] { width: 54px; heigh
         <button id="btn-tourist" class="tool-btn" type="button" title="لوحة السائح [P]"><svg class="icon" aria-hidden="true"><use href="#i-bag"/></svg><span class="tool-label">السائح</span></button>
         <button id="btn-guide" class="tool-btn" type="button" title="دليل المعالم [G]"><svg class="icon" aria-hidden="true"><use href="#i-guide"/></svg><span class="tool-label">الدليل</span></button>
         <button id="btn-narrator" class="tool-btn" type="button" title="الراوي: يحكي عن المعالم والأحياء أثناء التجوال" aria-pressed="true"><svg class="icon" aria-hidden="true"><use href="#i-speaker"/></svg><span class="tool-label">الراوي</span></button>
+        <button id="btn-lang" class="tool-btn" type="button" title="لغة الراوي والجولات" aria-haspopup="menu" aria-expanded="false"><b class="lang-code">ع</b><span class="tool-label">اللغة</span></button>
         <button class="tool-btn" type="button" popovertarget="teleport-popover" title="انتقال سريع"><svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg><span class="tool-label">انتقال</span></button>
         <button id="btn-open-map" class="tool-btn" type="button" title="خريطة الرياض [M]"><svg class="icon" aria-hidden="true"><use href="#i-map"/></svg><span class="tool-label">الخريطة</span><kbd>M</kbd></button>
         <button id="btn-toggle-hud" class="tool-btn icon-only" type="button" title="إخفاء الواجهة [H]" aria-label="إخفاء الواجهة" aria-pressed="false">
@@ -380,8 +397,9 @@ body.driving-touch .touch-action[data-touch-action="boost"] { width: 54px; heigh
       <button class="touch-action" data-touch-action="down" type="button" aria-pressed="false" hidden><span aria-hidden="true">↓</span><span>هبوط</span></button>
       <button class="touch-action" data-touch-action="boost" type="button" aria-pressed="false"><span>تيربو</span></button>
       <div class="pedals" hidden>
+        <button class="touch-action pedal gear" id="gear-btn" type="button" aria-pressed="false" aria-label="ناقل الحركة: أمام أو رجوع"><b>D</b><small>أمام</small></button>
         <button class="touch-action pedal brake" data-touch-action="brake" type="button" aria-pressed="false"><span>فرامل</span></button>
-        <button class="touch-action pedal gas" data-touch-action="gas" type="button" aria-pressed="false"><span>وقود</span></button>
+        <button class="touch-action pedal gas" id="gas-pedal" type="button" aria-pressed="false" aria-label="دواسة الوقود: كلما ضغطت أعلى زادت السرعة، وأعلاها تيربو"><i class="lvl"></i><em>تيربو</em><span>وقود</span></button>
       </div>
     </div>
   </section>

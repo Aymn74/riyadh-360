@@ -300,7 +300,7 @@ export class Player {
     }
   }
   update(dt, input, traffic) {
-    const fwd = (input.up ? 1 : 0) - (input.down ? 1 : 0) + (input.ay || 0);
+    const fwd = (input.up ? 1 : 0) - (input.down ? 1 : 0) + (input.ay || 0) + (input.pedal || 0);
     const turn = (input.left ? 1 : 0) - (input.right ? 1 : 0) + (input.ax || 0);
     const boost = input.boost;
     const p = this.pos;
@@ -326,25 +326,28 @@ export class Player {
       let acc;
       // throttle: about 10 s from 0 to 100 km/h, tapering towards top speed
       if (fwd > 0.05) acc = (this.speed < -0.3 ? 9 : 3.6 * (1 - Math.max(0, this.speed) / (maxV * 1.05)) + 0.4) * fwd;
-      // brakes: ~9 m/s2, so 100 km/h stops in about 40 m
-      else if (fwd < -0.05) acc = this.speed > 0.5 ? 9 * fwd : 2.5 * fwd;
+      // brakes: ~9 m/s2, so 100 km/h stops in about 40 m; once stopped, the same pedal backs up
+      else if (fwd < -0.05) acc = this.speed > 0.5 ? 9 * fwd : 4 * fwd;
       // coasting: rolling resistance plus air drag (100 km/h rolls on for about half a minute)
       else acc = -Math.sign(this.speed) * Math.min(v0 / Math.max(dt, 1e-3), 0.25 + 0.0007 * v0 * v0);
-      this.speed = THREE.MathUtils.clamp(this.speed + acc * dt, -6, Math.max(maxV, this.speed));
+      // the touch brake pedal only stops the car (backing up is the reverse gear's job)
+      if (input.hold) acc = -Math.sign(this.speed) * Math.min(v0 / Math.max(dt, 1e-3), 9);
+      this.speed = THREE.MathUtils.clamp(this.speed + acc * dt, -8, Math.max(maxV, this.speed));
       if (this.speed > maxV) this.speed += (maxV - this.speed) * Math.min(1, dt * 0.8);
       this.lastAcc = acc;
       // the steering wheel: a touch wheel sets it directly; keys turn it at a steady rate (full lock in about
-      // a third of a second) and it springs back to centre faster than it goes out
+      // a quarter of a second) and it springs back to centre faster than it goes out
       const want = THREE.MathUtils.clamp(turn, -1, 1);
       const out = Math.abs(want) > Math.abs(this.steer) && want * this.steer >= 0;
-      const rate = input.analog ? 14 : out ? 3.2 : 6.5;
+      const rate = input.analog ? 14 : out ? 4.5 : 7;
       this.steer += THREE.MathUtils.clamp(want - this.steer, -rate * dt, rate * dt);
       const v = Math.abs(this.speed);
-      // bicycle model of a Land Cruiser: 2.85 m wheelbase, 33° at the front wheels on full lock (a 5.9 m turning
-      // radius), and never more yaw than about 0.95 g of tyre grip allows, so a motorway exit can be taken at 60 km/h
-      const delta = this.steer * 0.45;
+      // bicycle model: 2.85 m wheelbase and 35° at the front wheels on full lock (a 4 m turning radius, tight
+      // enough for a U-turn in a street), and never more yaw than about 1.25 g of grip allows, so a motorway
+      // exit can be taken at 70 km/h
+      const delta = this.steer * 0.62;
       let yawRate = (v * Math.tan(delta)) / 2.85;
-      const grip = 9.3 / Math.max(v, 0.5);
+      const grip = 12.3 / Math.max(v, 0.5);
       yawRate = THREE.MathUtils.clamp(yawRate, -grip, grip);
       this.yaw += yawRate * dt * Math.sign(this.speed || 1);
       this.steerIdle = Math.abs(turn) < 0.05 ? (this.steerIdle || 0) + dt : 0;

@@ -30,8 +30,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **الرياض القديمة بالطراز النجدي:** المصمك، وجامع الإمام تركي بمئذنتيه وجسوره إلى قصر الحكم، وسوق الزل، وقصر المربع، والقصر الأحمر، والمتحف الوطني، ومكتبة الملك فهد، مبنية على مخططاتها الحقيقية بجدران الطين والحجر والشرفات المثلثة، ومضاءة ليلاً.
 - **أربعة أوقات:** الظهيرة، والمغرب، والليل بإضاءة الشوارع والمباني، والهبوب (عاصفة رملية).
 - **حركة مرور** تسير على شبكة الطرق الفعلية وتلتزم بحدود السرعة.
-- **على الجوال:** مقود حقيقي تديره بإصبعك حتى 150° في كل اتجاه ويعود إلى المنتصف عند تركه، ودواستا وقود وفرامل، وزر تيربو، وكاميرا مضبوطة للشاشة العمودية.
-- **قيادة واقعية:** انعطاف بنموذج لاندكروزر الحقيقي (قاعدة عجلات 2.85 م ودائرة دوران 5.9 م) محدود بتماسك الإطارات، فتُؤخذ المخارج بسرعة 60 كم/س، ومساعد المسار لا يتدخل إلا بعد ثانية من ترك المقود.
+- **على الجوال:** مقود حقيقي تديره بإصبعك حتى 150° في كل اتجاه ويعود إلى المنتصف عند تركه؛ ودواسة وقود متدرجة (كلما ضغطت أعلى زادت السرعة، وأعلاها تيربو)؛ وفرامل توقف السيارة؛ وزر ناقل حركة للرجوع للخلف؛ وكاميرا مضبوطة للشاشة العمودية.
+- **قيادة واقعية:** انعطاف حاد بزاوية عجلات 35° ودائرة دوران 4 م تكفي للالتفاف في الشارع، ومحدود عند السرعة بتماسك الإطارات فتُؤخذ المخارج بسرعة 70 كم/س، ومساعد المسار لا يتدخل إلا بعد ثانية من ترك المقود.
 
 ### دليل الرياض (زر البوصلة)
 - **39 معلماً** في ثماني فئات: تاريخ وتراث، أبراج ومعمار، متاحف وثقافة، مساجد، جامعات، ترفيه وحدائق، تسوق، مطاعم ومقاهٍ. من بينها المصمك وسوق الزل وقصر المربع وقصر الحكم وبرج المملكة وجامعة الملك سعود والبوليفارد والطريف.
@@ -50,7 +50,7 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 - **اقترح أفضل مسار:** يرتّب المحطات لأقصر طريق يبدأ من موقعك، بمسافات الطرق الفعلية، ويعرض اتجاه كل مرحلة ومسافتها والمسافة الكلية ووقت القيادة. ثم اختر جولة جوية مع الراوي، أو قيادة على المسار ينتقل فيها الإرشاد من محطة إلى التالية.
 
 ### الراوي أثناء التجوال (زر السماعة)
-يحكي قصة كل معلم تقترب منه، ويذكر اسم الحي حين تدخله، باللغة التي تختارها.
+يحكي قصة كل معلم تقترب منه، ويذكر اسم الحي حين تدخله. تختار اللغة من زر اللغة في الشريط العلوي، أو من أزرار اللغات تحت بطاقة المعلم فيُعاد سرده باللغة الجديدة.
 
 ### لوحة السائح (زر الحقيبة)
 - وقت الرياض، ومواقيت الصلاة لليوم بطريقة أم القرى، محسوبة على الجهاز دون إنترنت.
@@ -73,10 +73,11 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
   Murabba Palace, the Red Palace, the National Museum and King Fahd Library, built on their real outlines and floodlit at night.
 - **Four times of day:** noon, maghrib, night with street and building lights, and haboob (a sandstorm).
 - **Traffic** follows the real road network and speed limits.
-- **On phones:** a real steering wheel turned by circling your thumb, up to 150° each way, that springs back when let go,
-  accelerator and brake pedals, and a camera tuned for portrait screens.
-- **Driving** follows a Land Cruiser's geometry (2.85 m wheelbase, 5.9 m turning radius) limited by tyre grip, so exits
-  can be taken at 60 km/h; lane keeping steps in only after a second hands-off.
+- **On phones:** a real steering wheel turned by circling your thumb, up to 150° each way, that springs back when let go;
+  a graded gas pedal (the higher you press, the faster, with turbo at the top); a brake that stops the car; a gear button
+  for reverse; and a camera tuned for portrait screens.
+- **Driving** turns sharply (35° at the front wheels, a 4 m turning radius, enough for a U-turn in a street) and is
+  limited by tyre grip at speed, so exits can be taken at 70 km/h; lane keeping steps in only after a second hands-off.
 
 ### Riyadh guide (compass button, `G`)
 - **39 landmarks** in eight categories, with search and sorting by importance or distance.
@@ -98,6 +99,8 @@ Inspired by [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork). It wo
 
 ### Narrator and tourist panel
 - **The narrator (speaker button)** tells each landmark's story as you approach it, and names each district as you enter it.
+  Change its language from the language button in the toolbar, or from the language chips under a landmark's note,
+  which retell that landmark in the new language.
 - **The tourist panel (bag button, `P`)** shows Riyadh time and today's prayer times (Umm al-Qura, computed on the device). It also has buttons for nearby places, the nearest mosque, tours and a surprise, a passport of the landmarks you have visited, and an Arabic phrase of the day.
 
 Narration uses the browser's own speech voices, so the voices available depend on the device. Prayer times can differ by a minute or two from the official calendar.
@@ -133,8 +136,9 @@ direction and length, and the food list sorted into traditional, fast food, Asia
 | | Keyboard | Phone |
 |---|---|---|
 | Move | WASD / arrows | left stick; a steering wheel while driving |
-| Accelerate / brake | W / S | right pedals |
-| Boost | Shift | تيربو |
+| Accelerate / brake | W / S | right pedals (the higher on the gas, the faster) |
+| Reverse | S after stopping | the D / R gear button |
+| Boost | Shift | top of the gas pedal |
 | Jump / climb, descend | Space or E, Q | on-screen buttons |
 | Modes | 1 walk · 2 drive · 3 fly | bottom bar |
 | Cameras / cockpit | V / C | |
@@ -185,7 +189,7 @@ To run it locally, serve the folder with any static server (for example `npx ser
 
 The tests open the full site in a browser and check what a visitor relies on: map names shown as text and never
 run, recovery after failed downloads, routes by car and on foot to every landmark, panels that fit small phone
-screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the sorting
+screens, clear messages when the engine or WebGL2 is missing, Isha in Ramadan, narration after a pause, the graded gas pedal and reverse, changing language under a note, the sorting
 of food and shopping, the best order of a custom tour, steering (an exit at 60 km/h, the touch wheel) and tunnels.
 They run on every push (GitHub Actions, `.github/workflows/test.yml`).
 
